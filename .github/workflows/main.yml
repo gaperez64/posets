@@ -6,6 +6,7 @@ jobs:
     steps:
     - name: Install packages
       run: |
+        sudo apt-get update
         sudo apt-get -y install zsh git gcc python-is-python3 ninja-build gnupg wget python3-pip python3-setuptools pkg-config libglib2.0-dev libffi-dev autoconf automake libtool bison flex valgrind clang-format clang-tidy
         sudo pip install --upgrade meson
     - name: Checkout repository and submodules
