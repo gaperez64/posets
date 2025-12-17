@@ -1,4 +1,4 @@
-posets_dep = declare_dependency(include_directories: '.', dependencies : [boost_dep])
+posets_dep = declare_dependency(include_directories: ['.', boost_inc])
 
 header_files = [
   'posets/downsets/full_set.hh',

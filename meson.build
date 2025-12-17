@@ -9,7 +9,7 @@ if not meson.is_subproject()
   add_global_arguments (extra_args, language: 'cpp')
 endif
 
-boost_dep = dependency ('boost')
+boost_inc = include_directories('lib')
 
 subdir ('include')
 subdir ('tests')
