@@ -389,8 +389,8 @@ namespace posets::utils {
         // Stack contains node and child ID of S, node and child ID of T, layer
         std::stack<std::tuple<size_t, size_t, size_t, size_t, size_t>> current_stack;
 
-        const st_node root_nod_e1 = layers[destination_layer][ns];
-        const st_node root_nod_e2 = layers[destination_layer][nt];
+        [[maybe_unused]] const st_node root_nod_e1 = layers[destination_layer][ns];
+        [[maybe_unused]] const st_node root_nod_e2 = layers[destination_layer][nt];
         assert (root_nod_e1.numchild > 0 and root_nod_e2.numchild > 0);
 
         current_stack.emplace (ns, 0, nt, 0, destination_layer);
