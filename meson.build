@@ -12,4 +12,7 @@ endif
 boost_inc = include_directories('lib')
 
 subdir ('include')
-subdir ('tests')
+
+if not meson.is_subproject()
+  subdir ('tests')
+endif
