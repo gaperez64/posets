@@ -256,6 +256,7 @@ namespace posets::utils {
 
       void add_son (st_node& node, size_t son_layer, size_t son) {
         const int last = node.numchild - 1;
+        [[maybe_unused]] // only used in assert below
         const st_node& son_node = layers[son_layer][son];
         size_t* children = child_buffer + node.cbuffer_offset;
 
