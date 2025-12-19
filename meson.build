@@ -7,9 +7,9 @@ if not meson.is_subproject()
                 '-fno-diagnostics-show-caret',
                 '-fconcepts-diagnostics-depth=2']
   add_global_arguments (extra_args, language: 'cpp')
+  subdir ('tests')
 endif
 
 boost_inc = include_directories('lib')
 
 subdir ('include')
-subdir ('tests')
