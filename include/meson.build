@@ -25,4 +25,6 @@ header_files = [
   'posets/vectors.hh'
 ]
 
-install_headers(header_files, preserve_path: true)
+if not meson.is_subproject()
+  install_headers(header_files, preserve_path: true)
+endif
