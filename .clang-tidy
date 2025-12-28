@@ -25,6 +25,7 @@ Checks: >
   -readability-function-cognitive-complexity,
   
 HeaderFilterRegex: '.*'
+ExcludeHeaderFilterRegex: 'lib/.*'
 WarningsAsErrors: '*'
 
 FormatStyle: 'file'
