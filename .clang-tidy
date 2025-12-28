@@ -24,8 +24,7 @@ Checks: >
   -readability-identifier-length,
   -readability-function-cognitive-complexity,
   
-HeaderFilterRegex: '.*'
-ExcludeHeaderFilterRegex: 'lib/.*'
+HeaderFilterRegex: 'include/.*|tests/.*'
 WarningsAsErrors: '*'
 
 FormatStyle: 'file'

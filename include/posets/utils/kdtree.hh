@@ -65,9 +65,9 @@ namespace posets::utils {
                             size_t axis) {
         // sanity checks
         assert (this->tree != nullptr);
-        assert (static_cast<size_t> (
-                    4 << (int) (std::floor (std::log2 (this->vector_set.size ())))) > result);
-        assert (static_cast<size_t> (std::distance (begin_it, end_it)) == length);
+        assert (std::cmp_greater (4 << (int) (std::floor (std::log2 (this->vector_set.size ()))),
+                                  result));
+        assert (std::cmp_equal (std::distance (begin_it, end_it), length));
         assert (length > 0);
         assert (axis < this->dim);
 
@@ -130,8 +130,8 @@ namespace posets::utils {
                                 size_t dims_to_dom) const {
         // sanity checks
         assert (this->tree != nullptr);
-        assert (static_cast<size_t> (
-                    4 << (int) (std::floor (std::log2 (this->vector_set.size ())))) > node_idx);
+        assert (std::cmp_greater (4 << (int) (std::floor (std::log2 (this->vector_set.size ()))),
+                                  node_idx));
         assert (dims_to_dom > 0);
 
         // from index to node pointer
