@@ -30,7 +30,7 @@ class test_t;
 
 template <typename ResType>
 struct generic_test {
-    virtual ResType operator () () = 0;
+    virtual ResType operator () () = 0;  // NOLINT(portability-template-virtual-member-function)
     virtual ~generic_test () = default;
 };
 
