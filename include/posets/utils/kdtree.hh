@@ -10,6 +10,7 @@
 #include <numeric>
 #include <ranges>
 #include <stack>
+#include <utility>
 #include <vector>
 
 #include <posets/concepts.hh>
