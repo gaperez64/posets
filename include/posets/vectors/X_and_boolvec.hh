@@ -48,7 +48,8 @@ namespace posets::vectors {
           x {std::move (x)},
           bools {std::move (bs)},
           sum {sum} {
-        assert (sum == std::accumulate (bools.begin (), bools.end (), 0U));  // NOLINT(boost-use-ranges)
+        assert (sum ==
+                std::accumulate (bools.begin (), bools.end (), 0U));  // NOLINT(boost-use-ranges)
       }
 
     public:
@@ -76,8 +77,10 @@ namespace posets::vectors {
             bleq = (lhs.sum <= rhs.sum);
 
             for (size_t i = bool_threshold; (bgeq or bleq) and i < lhs.k; ++i) {
-              bgeq = bgeq and (lhs.bools[i - bool_threshold] or (not rhs.bools[i - bool_threshold]));
-              bleq = bleq and ((not lhs.bools[i - bool_threshold]) or rhs.bools[i - bool_threshold]);
+              bgeq =
+                  bgeq and (lhs.bools[i - bool_threshold] or (not rhs.bools[i - bool_threshold]));
+              bleq =
+                  bleq and ((not lhs.bools[i - bool_threshold]) or rhs.bools[i - bool_threshold]);
             }
 
             if (not bgeq and not bleq)
