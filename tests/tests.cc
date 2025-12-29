@@ -415,6 +415,9 @@ namespace posets::vectors {
 
   template <typename T>
   using simd_vector_and_bitset_backed = posets::vectors::x_and_bitset<posets::vectors::simd_vector_backed<T>, 1>;
+
+  template <typename T>
+  using simd_vector_and_boolvec_backed = posets::vectors::x_and_boolvec<posets::vectors::simd_vector_backed<T>>;
 }
 
 #define DEFINE_VECTOR_NAME(V) template <> struct vector_name<V> { static constexpr auto str = #V; };
@@ -430,7 +433,8 @@ VECTOR_TYPES (posets::vectors::vector_backed<char>,
               posets::vectors::simd_array_ptr_backed_fixed<char>,
               posets::vectors::simd_array_backed_sum_fixed<char>,
               posets::vectors::simd_array_ptr_backed_sum_fixed<char>,
-              posets::vectors::simd_vector_and_bitset_backed<char>);
+              posets::vectors::simd_vector_and_bitset_backed<char>,
+              posets::vectors::simd_vector_and_boolvec_backed<char>);
 
 using set_types = template_type_list<//posets::downsets::full_set, ; too slow.
   posets::downsets::sharingtree_backed,

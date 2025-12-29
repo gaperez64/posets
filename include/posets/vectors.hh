@@ -2,6 +2,7 @@
 
 #include <posets/concepts.hh>
 #include <posets/vectors/X_and_bitset.hh>
+#include <posets/vectors/X_and_boolvec.hh>
 #include <posets/vectors/generic.hh>
 
 namespace posets::vectors {
@@ -101,6 +102,7 @@ namespace posets::vectors {
   static_assert (Vector<vector_backed_sum<int>>);
 
   static_assert (Vector<x_and_bitset<vector_backed<int>, 128>>);
+  static_assert (Vector<x_and_boolvec<vector_backed<int>>>);
 }
 
 namespace std {
