@@ -36,19 +36,19 @@ namespace posets::vectors {
       x_and_boolvec (x_and_boolvec&& other) = default;
 
     private:
-      x_and_boolvec (size_t k, X&& x, std::vector<bool>&& bools)
+      x_and_boolvec (size_t k, X&& x, std::vector<bool>&& bs)
         : k {k},
           x {std::move (x)},
-          bools {std::move (bools)} {
-        sum = std::accumulate (bools.begin (), bools.end (), 0);
+          bools {std::move (bs)} {
+        sum = std::accumulate (bools.begin (), bools.end (), 0U);  // NOLINT(boost-use-ranges)
       }
 
-      x_and_boolvec (size_t k, X&& x, std::vector<bool>&& bools, size_t sum)
+      x_and_boolvec (size_t k, X&& x, std::vector<bool>&& bs, size_t sum)
         : k {k},
           x {std::move (x)},
-          bools {std::move (bools)},
+          bools {std::move (bs)},
           sum {sum} {
-        assert (sum == std::accumulate (bools.begin (), bools.end (), 0u));
+        assert (sum == std::accumulate (bools.begin (), bools.end (), 0U));  // NOLINT(boost-use-ranges)
       }
 
     public:
@@ -65,7 +65,7 @@ namespace posets::vectors {
       void to_vector (std::span<value_type> v) const {
         x.to_vector (std::span (v.data (), bool_threshold));
         for (size_t i = bool_threshold; i < k; ++i)
-          v[i] = bools[i - bool_threshold] - 1;
+          v[i] = static_cast<int> (bools[i - bool_threshold]) - 1;
       }
 
       class po_res {
@@ -76,8 +76,8 @@ namespace posets::vectors {
             bleq = (lhs.sum <= rhs.sum);
 
             for (size_t i = bool_threshold; (bgeq or bleq) and i < lhs.k; ++i) {
-              bgeq = bgeq and (lhs.bools[i - bool_threshold] >= rhs.bools[i - bool_threshold]);
-              bleq = bleq and (lhs.bools[i - bool_threshold] <= rhs.bools[i - bool_threshold]);
+              bgeq = bgeq and (lhs.bools[i - bool_threshold] or (not rhs.bools[i - bool_threshold]));
+              bleq = bleq and ((not lhs.bools[i - bool_threshold]) or rhs.bools[i - bool_threshold]);
             }
 
             if (not bgeq and not bleq)
@@ -102,18 +102,16 @@ namespace posets::vectors {
       }
 
       bool operator== (const x_and_boolvec& rhs) const {
-        assert (not(sum != rhs.sum and bools == rhs.bools));
         return sum == rhs.sum and bools == rhs.bools and x == rhs.x;
       }
 
       bool operator!= (const x_and_boolvec& rhs) const {
-        assert (not(sum != rhs.sum and bools == rhs.bools));
         return sum != rhs.sum or bools != rhs.bools or x != rhs.x;
       }
 
       value_type operator[] (size_t i) const {
         if (i >= bool_threshold)
-          return bools[i - bool_threshold] - 1;
+          return static_cast<int> (bools[i - bool_threshold]) - 1;
         return x[i];
       }
 
