@@ -266,9 +266,11 @@ namespace posets::utils {
       [[nodiscard]] const auto& get_backing_vector () const { return vector_set; }
 
       [[nodiscard]] bool dominates (const V& v, bool strict = false) const {
-        int lbounds[this->dim];  // NOLINT(modernize-avoid-c-arrays)
+        int* lbounds = new int[this->dim];
         std::fill_n (lbounds, this->dim, std::numeric_limits<int>::min ());
-        return this->recursive_dominates (v, strict, 0, lbounds, this->dim);
+        const bool res = this->recursive_dominates (v, strict, 0, lbounds, this->dim);
+        delete[] lbounds;
+        return res;
       }
 
       [[nodiscard]] bool is_antichain () const {
