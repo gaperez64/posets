@@ -1,7 +1,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <unordered_set>
 
 #include <algorithm>
 #include <boost/functional/hash.hpp>
@@ -44,6 +43,16 @@ namespace posets::utils {
       st_node* bin_tree;
       size_t bt_size;
       std::vector<V> vector_set;
+
+      // Generation-stamp cache for dominates(): avoids allocating hash sets on
+      // every call.  After color_as_dfa() runs, dominates_stamp has size
+      // dim * (nxt_color * 2); entry [depth * nxt_color*2 + strict_color] holds
+      // the generation when that (depth, strict_color) pair was last seen.
+      // dominates() bumps dominates_gen on entry; on the rare unsigned wrap to 0
+      // the stamp array is cleared and the generation restarted at 1.
+      int nxt_color {0};
+      mutable std::vector<unsigned> dominates_stamp;
+      mutable unsigned dominates_gen {0};
 
       // We need to compare subtrees (assuming the trie construction
       // has been applied)
@@ -231,6 +240,10 @@ namespace posets::utils {
             nxt_color += 1;
           }
         }
+        // Set up the generation-stamp cache for dominates()
+        this->nxt_color = nxt_color;
+        this->dominates_stamp.assign (this->dim * (nxt_color * 2), 0u);
+        this->dominates_gen = 0u;
       }
 
     public:
@@ -318,7 +331,10 @@ namespace posets::utils {
           root (other.root),
           bin_tree (other.bin_tree),
           bt_size (other.bt_size),
-          vector_set (std::move (other.vector_set)) {
+          vector_set (std::move (other.vector_set)),
+          nxt_color (other.nxt_color),
+          dominates_stamp (std::move (other.dominates_stamp)),
+          dominates_gen (other.dominates_gen) {
         other.bin_tree = nullptr;
       }
       ~sharingtrie () { delete[] this->bin_tree; }
@@ -327,6 +343,9 @@ namespace posets::utils {
         this->root = other.root;
         this->bt_size = other.bt_size;
         this->vector_set = std::move (other.vector_set);
+        this->nxt_color = other.nxt_color;
+        this->dominates_stamp = std::move (other.dominates_stamp);
+        this->dominates_gen = other.dominates_gen;
         // WARNING: 3 variable follows to make the whole thing safe for
         // self-assignment
         st_node* temp_tree = other.bin_tree;
@@ -351,13 +370,19 @@ namespace posets::utils {
         // the right subtrees afterwards). To speed things up, we keep track
         // of visited colors and strictness per level.
 
-        // First the DFS, for which we use a vector as a stack of node indices
-        // and directions (0 down, 1 right), bounded by dim so we reserve
-        // upfront. We also keep track of the strictness required thus far.
+        // Bump the generation counter; on unsigned wrap-around to 0 (roughly
+        // every 4 billion calls) clear the stamp array and restart at 1.
+        if (++this->dominates_gen == 0u) {
+          std::fill (this->dominates_stamp.begin (), this->dominates_stamp.end (), 0u);
+          ++this->dominates_gen;
+        }
+        const int sc_stride = this->nxt_color * 2;
+
+        // DFS: vector used as stack of (node index, direction, strictness),
+        // bounded by dim so we reserve upfront.
         std::vector<std::tuple<int, short, bool>> to_visit;
         to_visit.reserve (this->dim);
         to_visit.emplace_back (this->root, 0, strict);
-        std::vector<std::unordered_set<int>> colors_visited (this->dim);
 
         bool ret = false;
         while (not to_visit.empty ()) {
@@ -399,16 +424,17 @@ namespace posets::utils {
             else {
               assert (to_visit.size () < this->dim - 1);
               // before actually checking this subtree, we check if we've
-              // visited an equivalent one and otherwise mark it for the
-              // future; skipping = go to sibling directly (as in dir=1)
+              // visited an equivalent one (using the generation-stamp cache)
+              // and otherwise mark it for the future; skipping = go to sibling
               const int strict_color = (cur->color << 1) + (new_strict ? 1 : 0);
-              auto iter = colors_visited[to_visit.size ()].find (strict_color);
-              if (iter != colors_visited[to_visit.size ()].end ()) {
+              const size_t depth = to_visit.size ();
+              unsigned& stamp = this->dominates_stamp[depth * sc_stride + strict_color];
+              if (stamp == this->dominates_gen) {
                 if (cur->bro > -1)
                   to_visit.emplace_back (cur->bro, 0, loc_strict);
               }
               else {
-                colors_visited[to_visit.size ()].insert (strict_color);
+                stamp = this->dominates_gen;
                 to_visit.emplace_back (idx, 1, loc_strict);
                 to_visit.emplace_back (cur->son, 0, new_strict);
               }
