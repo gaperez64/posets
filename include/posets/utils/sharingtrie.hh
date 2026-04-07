@@ -53,6 +53,7 @@ namespace posets::utils {
       int nxt_color {0};
       mutable std::vector<unsigned> dominates_stamp;
       mutable unsigned dominates_gen {0};
+      mutable std::vector<std::tuple<int, short, bool>> dominates_stack;
 
       // We need to compare subtrees (assuming the trie construction
       // has been applied)
@@ -240,10 +241,11 @@ namespace posets::utils {
             nxt_color += 1;
           }
         }
-        // Set up the generation-stamp cache for dominates()
+        // Set up the generation-stamp cache and DFS stack for dominates()
         this->nxt_color = nxt_color;
         this->dominates_stamp.assign (this->dim * (nxt_color * 2), 0u);
         this->dominates_gen = 0u;
+        this->dominates_stack.reserve (this->dim);
       }
 
     public:
@@ -334,7 +336,8 @@ namespace posets::utils {
           vector_set (std::move (other.vector_set)),
           nxt_color (other.nxt_color),
           dominates_stamp (std::move (other.dominates_stamp)),
-          dominates_gen (other.dominates_gen) {
+          dominates_gen (other.dominates_gen),
+          dominates_stack (std::move (other.dominates_stack)) {
         other.bin_tree = nullptr;
       }
       ~sharingtrie () { delete[] this->bin_tree; }
@@ -346,6 +349,7 @@ namespace posets::utils {
         this->nxt_color = other.nxt_color;
         this->dominates_stamp = std::move (other.dominates_stamp);
         this->dominates_gen = other.dominates_gen;
+        this->dominates_stack = std::move (other.dominates_stack);
         // WARNING: 3 variable follows to make the whole thing safe for
         // self-assignment
         st_node* temp_tree = other.bin_tree;
@@ -378,10 +382,9 @@ namespace posets::utils {
         }
         const int sc_stride = this->nxt_color * 2;
 
-        // DFS: vector used as stack of (node index, direction, strictness),
-        // bounded by dim so we reserve upfront.
-        std::vector<std::tuple<int, short, bool>> to_visit;
-        to_visit.reserve (this->dim);
+        // DFS: reuse the member stack (capacity already reserved to dim).
+        auto& to_visit = this->dominates_stack;
+        to_visit.clear ();
         to_visit.emplace_back (this->root, 0, strict);
 
         bool ret = false;
