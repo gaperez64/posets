@@ -3,10 +3,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <algorithm>
 #include <boost/functional/hash.hpp>
 #include <cassert>
 #include <iostream>
-#include <map>
 #include <ranges>
 #include <stack>
 #include <tuple>
@@ -54,18 +54,18 @@ namespace posets::utils {
           }
       };
 
-      // We change the sibling pointers/indices of children of the given nodes
+      // We change the sibling pointers/indices of children of nodes[start..end)
       // so that they form a single set of siblings
-      void string_children (const std::vector<int>& nodes) {
+      void string_children (const std::vector<int>& nodes, size_t start, size_t end) {
         // we fetch the first sibling, if there is one
-        st_node* cur = this->bin_tree + nodes[0];
+        st_node* cur = this->bin_tree + nodes[start];
         if (cur->son == -1)
           return;
         st_node* last = this->bin_tree + cur->son;
         // now, for all remaining nodes we
         // (1) get to the last sibling
         // (2) link to the next first sibling and
-        for (size_t i = 1; i < nodes.size (); i++) {
+        for (size_t i = start + 1; i < end; i++) {
           while (last->bro > -1)
             last = this->bin_tree + last->bro;
           cur = this->bin_tree + nodes[i];
@@ -103,25 +103,33 @@ namespace posets::utils {
               to_visit.emplace (cur->bro, 1);
           }
           else if (mode == 0) {
-            // order nodes in label-decreasing order
-            std::map<int, std::vector<int>, std::greater<>> buckets;
+            // collect siblings into a vector and sort by label descending
+            // (single allocation, avoids map + per-label vector overhead)
+            std::vector<int> sibs;
             int sib_idx = idx;
             while (sib_idx > -1) {
-              st_node* cur = this->bin_tree + sib_idx;
-              buckets[cur->label].push_back (sib_idx);
-              sib_idx = cur->bro;
+              sibs.push_back (sib_idx);
+              sib_idx = this->bin_tree[sib_idx].bro;
             }
-            // traverse the map in order to construct a set of children with the
-            // first node per label only (in decreasing order)
-            int head = -1;
-            st_node* prev;
-            for (auto& [label, nodes] : buckets) {
-              string_children (nodes);
-              if (head == -1)
-                head = nodes[0];
+            std::sort (sibs.begin (), sibs.end (), [this] (int a, int b) {
+              return this->bin_tree[a].label > this->bin_tree[b].label;
+            });
+            // process groups of same-label siblings and relink bro pointers
+            int head = sibs[0];
+            st_node* prev = nullptr;
+            size_t i = 0;
+            while (i < sibs.size ()) {
+              const auto label = this->bin_tree[sibs[i]].label;
+              size_t j = i + 1;
+              while (j < sibs.size () && this->bin_tree[sibs[j]].label == label)
+                j++;
+              string_children (sibs, i, j);
+              if (prev == nullptr)
+                head = sibs[i];
               else
-                prev->bro = nodes[0];
-              prev = this->bin_tree + nodes[0];
+                prev->bro = sibs[i];
+              prev = this->bin_tree + sibs[i];
+              i = j;
             }
             prev->bro = -1;
             // now, we either repair the root, or the top-of-stack node
