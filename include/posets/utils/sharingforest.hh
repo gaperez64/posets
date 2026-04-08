@@ -2,11 +2,11 @@
 
 #include <unordered_map>
 
+#include <algorithm>
 #include <boost/functional/hash.hpp>
 #include <cassert>
-#include <iostream>
-#include <algorithm>
 #include <cstdint>
+#include <iostream>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -318,7 +318,7 @@ namespace posets::utils {
             }
             else if (to_insert != SIZE_MAX) {
               // The space we want to insert is occupied - we save the value for later
-              size_t temp = children[i];
+              const size_t temp = children[i];
               children[next_insertion] = to_insert;
               to_insert = temp;
             }
@@ -492,7 +492,7 @@ namespace posets::utils {
                 if (c_s < node_s.numchild and c_t < node_t.numchild)
                   node_union_stack.emplace_back (n_s, c_s + 1, n_t, c_t + 1, layer);
                 node_union_stack.emplace_back (node_s_children[c_s], 0, node_t_children[c_t], 0,
-                                       layer + 1);
+                                               layer + 1);
               }
             }
           }
@@ -526,8 +526,8 @@ namespace posets::utils {
                     has_son (new_node, destination_layer + 1,
                              layers[destination_layer + 1][intersect_res.value ()].label);
                 if (existing_son != SIZE_MAX) {
-                  size_t new_son = node_union (existing_son, intersect_res.value (),
-                                               destination_layer + 1);
+                  size_t new_son =
+                      node_union (existing_son, intersect_res.value (), destination_layer + 1);
                   size_t* new_node_children = child_buffer + new_node.cbuffer_offset;
                   new_node_children[existing_son] = new_son;
                 }
@@ -561,8 +561,8 @@ namespace posets::utils {
        * of vectors. The lg(n) factor comes from sorting at each recursive level
        * to partition vectors by their value in the current dimension.
        */
-      size_t build_node (std::vector<size_t>& vecs, size_t start, size_t end,
-                         size_t current_layer, const auto& element_vec, bool check_sim = true) {
+      size_t build_node (std::vector<size_t>& vecs, size_t start, size_t end, size_t current_layer,
+                         const auto& element_vec, bool check_sim = true) {
         assert (start < end);
         // If currentLayer is 0, we set the label to the dummy value -1 for the root
         // Else all nodes should have the same value at index currentLayer - 1, so
@@ -589,9 +589,11 @@ namespace posets::utils {
           else {
             // Sort vecs[start..end) descending by value at current_layer, then
             // scan for group boundaries — no map or per-group vector allocation.
-            std::sort (vecs.begin () + start, vecs.begin () + end, [&] (size_t a, size_t b) {
-              return element_vec[a][current_layer] > element_vec[b][current_layer];
-            });
+            std::sort (vecs.begin () + static_cast<std::ptrdiff_t> (start),
+                       vecs.begin () + static_cast<std::ptrdiff_t> (end),
+                       [&] (size_t a, size_t b) {
+                         return element_vec[a][current_layer] > element_vec[b][current_layer];
+                       });
             size_t num_groups = 1;
             for (size_t k = start + 1; k < end; ++k)
               if (element_vec[vecs[k]][current_layer] != element_vec[vecs[k - 1]][current_layer])
@@ -602,7 +604,8 @@ namespace posets::utils {
             while (i < end) {
               const auto val = element_vec[vecs[i]][current_layer];
               size_t j = i + 1;
-              while (j < end and element_vec[vecs[j]][current_layer] == val) ++j;
+              while (j < end and element_vec[vecs[j]][current_layer] == val)
+                ++j;
               // Build a new son for each group vecs[i..j)
               const size_t new_son =
                   build_node (vecs, i, j, current_layer + 1, element_vec, check_sim);
@@ -787,7 +790,8 @@ namespace posets::utils {
             else if (c_s < node_s.numchild)
               st_intersect_stack.emplace_back (n_s, c_s + 1, n_t, 0, layer);
             if (c_t < node_t.numchild and c_s < node_s.numchild)
-              st_intersect_stack.emplace_back (node_s_children[c_s], 0, node_t_children[c_t], 0, layer + 1);
+              st_intersect_stack.emplace_back (node_s_children[c_s], 0, node_t_children[c_t], 0,
+                                               layer + 1);
           }
         }
 
@@ -897,7 +901,8 @@ namespace posets::utils {
         std::iota (vector_ids.begin (), vector_ids.end (), 0);
         // NOLINTEND(boost-use-ranges)
 
-        const size_t root_id = build_node (vector_ids, 0, vector_ids.size (), 0, element_vec, check_sim);
+        const size_t root_id =
+            build_node (vector_ids, 0, vector_ids.size (), 0, element_vec, check_sim);
 #ifndef NDEBUG
         size_t maxlayer = 0;
         size_t totlayer = 0;
