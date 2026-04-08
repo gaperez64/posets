@@ -6,6 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <cstdint>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -45,7 +46,7 @@ namespace posets::utils {
 
       struct st_node {
           typename V::value_type label;
-          size_t numchild;
+          uint32_t numchild;
           size_t cbuffer_offset;
       };
 
@@ -129,9 +130,9 @@ namespace posets::utils {
         cbuffer_nxt = 0;
       }
 
-      std::optional<size_t> has_son (st_node& node, size_t child_layer, int val) {
+      size_t has_son (st_node& node, size_t child_layer, int val) {
         if (node.numchild == 0)
-          return std::nullopt;
+          return SIZE_MAX;
 
         size_t left = 0;
         size_t right = node.numchild - 1;
@@ -150,10 +151,12 @@ namespace posets::utils {
             right = mid - 1;
         }
 
-        return std::nullopt;
+        return SIZE_MAX;
       }
 
       bool simulates (size_t n1idx, size_t n2idx, size_t layidx) {
+        if (n1idx == n2idx)
+          return true;
         auto node_pair = std::make_pair (n1idx, n2idx);
         auto cached = simulating[layidx].find (node_pair);
         if (cached != simulating[layidx].end ())
@@ -300,34 +303,33 @@ namespace posets::utils {
             left = mid + 1;
         }
 
-        // NOLINTBEGIN(bugprone-unchecked-optional-access)
         // Shift elements in the child buffer to make room for the new child
         // Overwrite simulated elements!
-        std::optional<size_t> to_insert {son};
+        size_t to_insert = son;  // SIZE_MAX means "none pending"
         size_t next_insertion {static_cast<size_t> (left)};
         const size_t current_children {node.numchild};
         for (size_t i = left; i < current_children; i++) {
           assert (next_insertion <= i);
           if (not simulates (son, children[i], son_layer)) {
-            if (next_insertion < i and not to_insert.has_value ()) {
+            if (next_insertion < i and to_insert == SIZE_MAX) {
               // The next insertion point is smaller, so we already looked at it
               // We can directly overwrite the value with our current one
               children[next_insertion] = children[i];
             }
-            else if (to_insert.has_value ()) {
+            else if (to_insert != SIZE_MAX) {
               // The space we want to insert is occupied - we save the value for later
               size_t temp = children[i];
-              children[next_insertion] = to_insert.value ();
+              children[next_insertion] = to_insert;
               to_insert = temp;
             }
             next_insertion++;
           }
           else {
-            if (to_insert.has_value ()) {
+            if (to_insert != SIZE_MAX) {
               // There might still be a child we have not inserted so we overwrite
               // No other check necessary because next_insertion is always <= i
-              children[next_insertion] = to_insert.value ();
-              to_insert.reset ();
+              children[next_insertion] = to_insert;
+              to_insert = SIZE_MAX;
               next_insertion++;
             }
             node.numchild--;
@@ -336,9 +338,8 @@ namespace posets::utils {
 
         // If we had to shift every element, there will be something left to insert
         // We add it to the new end
-        if (to_insert.has_value ())
-          children[next_insertion] = to_insert.value ();
-        // NOLINTEND(bugprone-unchecked-optional-access)
+        if (to_insert != SIZE_MAX)
+          children[next_insertion] = to_insert;
 
         // Increase count by the new element
         node.numchild++;
@@ -505,7 +506,7 @@ namespace posets::utils {
       }
 
       std::optional<size_t> node_intersect (size_t n_s, size_t n_t, size_t destination_layer,
-                                            std::optional<st_node> father) {
+                                            const st_node* father) {
         st_node& node_s = layers[destination_layer][n_s];
         st_node& node_t = layers[destination_layer][n_t];
         st_node new_node {std::min (node_s.label, node_t.label), 0};
@@ -518,17 +519,17 @@ namespace posets::utils {
           for (size_t s_s = 0; s_s < node_s.numchild; s_s++) {
             for (size_t s_t = 0; s_t < node_t.numchild; s_t++) {
               auto intersect_res = node_intersect (node_s_children[s_s], node_t_children[s_t],
-                                                   destination_layer + 1, new_node);
+                                                   destination_layer + 1, &new_node);
               if (intersect_res.has_value ()) {
                 // Can happen that we insert the same value twice, so we need to check
-                auto existing_son =
+                const size_t existing_son =
                     has_son (new_node, destination_layer + 1,
                              layers[destination_layer + 1][intersect_res.value ()].label);
-                if (existing_son.has_value ()) {
-                  size_t new_son = node_union (existing_son.value (), intersect_res.value (),
+                if (existing_son != SIZE_MAX) {
+                  size_t new_son = node_union (existing_son, intersect_res.value (),
                                                destination_layer + 1);
                   size_t* new_node_children = child_buffer + new_node.cbuffer_offset;
-                  new_node_children[existing_son.value ()] = new_son;
+                  new_node_children[existing_son] = new_son;
                 }
                 else {
                   add_son (new_node, destination_layer + 1, intersect_res.value ());
@@ -540,8 +541,8 @@ namespace posets::utils {
           if (new_node.numchild == 0)
             return std::nullopt;
         }
-        if (father.has_value ()) {
-          auto [res, domd] = add_if_not_simulated (new_node, destination_layer, father.value ());
+        if (father != nullptr) {
+          auto [res, domd] = add_if_not_simulated (new_node, destination_layer, *father);
           if (domd)
             return std::nullopt;
           return res;
@@ -556,11 +557,9 @@ namespace posets::utils {
        *
        * Complexity: The implementation below has complexity O(n.d.lg(n)) where n is
        * the number of vectors, d is the number of dimensions. The nd factor is
-       * nor surprising: it already corresponds to the set of prefixes of the set
-       * of vectors. The lg(n) factor comes from the use of an (ordered) map at
-       * every recursive step to (re)partition the vectors for the children based
-       * on the list itself. It can be traded off by a factor of k (see TODO in
-       * code).
+       * not surprising: it already corresponds to the set of prefixes of the set
+       * of vectors. The lg(n) factor comes from sorting at each recursive level
+       * to partition vectors by their value in the current dimension.
        */
       size_t build_node (std::vector<size_t>& vecs, size_t start, size_t end,
                          size_t current_layer, const auto& element_vec, bool check_sim = true) {
