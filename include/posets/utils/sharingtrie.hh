@@ -243,7 +243,8 @@ namespace posets::utils {
         }
         // Set up the generation-stamp cache and DFS stack for dominates()
         this->nxt_color = nxt_color;
-        this->dominates_stamp.assign (this->dim * (nxt_color * 2), 0U);
+        this->dominates_stamp.assign (this->dim *
+                                      (static_cast<size_t> (nxt_color) * 2), 0U);
         this->dominates_gen = 0U;
         this->dominates_stack.reserve (this->dim);
       }
