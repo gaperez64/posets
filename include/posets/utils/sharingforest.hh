@@ -5,7 +5,7 @@
 #include <boost/functional/hash.hpp>
 #include <cassert>
 #include <iostream>
-#include <map>
+#include <algorithm>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -562,20 +562,20 @@ namespace posets::utils {
        * on the list itself. It can be traded off by a factor of k (see TODO in
        * code).
        */
-      size_t build_node (std::vector<size_t>& vecs, size_t current_layer, const auto& element_vec,
-                         bool check_sim = true) {
-        assert (not vecs.empty ());
+      size_t build_node (std::vector<size_t>& vecs, size_t start, size_t end,
+                         size_t current_layer, const auto& element_vec, bool check_sim = true) {
+        assert (start < end);
         // If currentLayer is 0, we set the label to the dummy value -1 for the root
         // Else all nodes should have the same value at index currentLayer - 1, so
         // we just use the first
         const typename V::value_type label {current_layer == 0
                                                 ? static_cast<typename V::value_type> (-1)
-                                                : element_vec[vecs[0]][current_layer - 1]};
+                                                : element_vec[vecs[start]][current_layer - 1]};
         st_node new_node {label, 0};
         // We have not reached the last layer - so add children
         if (current_layer < this->dim) {
-          if (vecs.size () == 1) {
-            auto& vec = element_vec[vecs[0]];
+          if (end - start == 1) {
+            auto& vec = element_vec[vecs[start]];
             st_node last_son_node {vec[vec.size () - 1], 0};
             size_t next_son = add_node (last_son_node, this->dim);
             for (size_t i = vec.size () - 1; i > current_layer; i--) {
@@ -588,19 +588,25 @@ namespace posets::utils {
             add_son (new_node, current_layer + 1, next_son);
           }
           else {
-            // Partition and order the future children
-            // TODO: Try to do constant-access bucketing based on the value of k.
-            // Probably won't pay off unless the set of vectors we are adding is
-            // dense in most components.
-            std::map<typename V::value_type, std::vector<size_t>, std::greater<>> new_partition {};
-            for (const auto& vec : vecs)
-              new_partition[element_vec[vec][current_layer]].push_back (vec);
-            new_node.cbuffer_offset = add_children (new_partition.size ());
+            // Sort vecs[start..end) descending by value at current_layer, then
+            // scan for group boundaries — no map or per-group vector allocation.
+            std::sort (vecs.begin () + start, vecs.begin () + end, [&] (size_t a, size_t b) {
+              return element_vec[a][current_layer] > element_vec[b][current_layer];
+            });
+            size_t num_groups = 1;
+            for (size_t k = start + 1; k < end; ++k)
+              if (element_vec[vecs[k]][current_layer] != element_vec[vecs[k - 1]][current_layer])
+                ++num_groups;
+            new_node.cbuffer_offset = add_children (num_groups);
 
-            for (auto& [n, children] : new_partition) {
-              // Build a new son for each individual value at currentLayer + 1
+            size_t i = start;
+            while (i < end) {
+              const auto val = element_vec[vecs[i]][current_layer];
+              size_t j = i + 1;
+              while (j < end and element_vec[vecs[j]][current_layer] == val) ++j;
+              // Build a new son for each group vecs[i..j)
               const size_t new_son =
-                  build_node (children, current_layer + 1, element_vec, check_sim);
+                  build_node (vecs, i, j, current_layer + 1, element_vec, check_sim);
               bool found = false;
               if (check_sim) {
                 size_t* current_children = child_buffer + new_node.cbuffer_offset;
@@ -613,6 +619,7 @@ namespace posets::utils {
               }
               if (not found)
                 add_son (new_node, current_layer + 1, new_son);
+              i = j;
             }
           }
         }
@@ -891,7 +898,7 @@ namespace posets::utils {
         std::iota (vector_ids.begin (), vector_ids.end (), 0);
         // NOLINTEND(boost-use-ranges)
 
-        const size_t root_id = build_node (vector_ids, 0, element_vec, check_sim);
+        const size_t root_id = build_node (vector_ids, 0, vector_ids.size (), 0, element_vec, check_sim);
 #ifndef NDEBUG
         size_t maxlayer = 0;
         size_t totlayer = 0;
