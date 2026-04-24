@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <iostream>
 #include <random>
@@ -19,27 +20,24 @@ namespace posets::utils {
   template <Vector V>
   class skiplist {
     private:
-      static constexpr int MAX_LEVEL = 16;
+      static constexpr int max_level = 16;
 
-      struct Node {
-          V value;
-          int level;
-          Node* forward[MAX_LEVEL];
+      struct node {
+          V value;    // NOLINT(misc-non-private-member-variables-in-classes)
+          int level;  // NOLINT(misc-non-private-member-variables-in-classes)
+          std::array<node*, max_level>
+              forward {};  // NOLINT(misc-non-private-member-variables-in-classes)
 
-          explicit Node (V&& v, int lvl) : value (std::move (v)), level (lvl) {
-            std::fill (forward, forward + MAX_LEVEL, nullptr);
-          }
+          explicit node (V&& v, int lvl) : value (std::move (v)), level (lvl) {}
 
           // Header sentinel: no value, all levels enabled.
-          Node () : value (1u), level (MAX_LEVEL - 1) {
-            std::fill (forward, forward + MAX_LEVEL, nullptr);
-          }
+          node () : value (1U), level (max_level - 1) {}
       };
 
-      Node* header;
-      int current_level;
-      size_t list_size;
-      size_t dim;
+      node* header;
+      int current_level {0};
+      size_t list_size {0};
+      size_t dim {0};
       mutable std::mt19937 rng {42};
 
       int get_sum (const V& v) const {
@@ -66,43 +64,43 @@ namespace posets::utils {
 
       int random_level () {
         int lvl = 0;
-        while (lvl < MAX_LEVEL - 1 && std::uniform_int_distribution<> (0, 1) (rng) == 1)
+        while (lvl < max_level - 1 and std::uniform_int_distribution<> (0, 1) (rng) == 1)
           ++lvl;
         return lvl;
       }
 
       // Fill update[] with the last node at each level that comes before v.
-      void find_update (const V& v, Node* update[MAX_LEVEL]) const {
-        Node* cur = header;
+      void find_update (const V& v, std::array<node*, max_level>& update) const {
+        node* cur = header;
         for (int i = current_level; i >= 0; --i) {
-          while (cur->forward[i] && comes_before (cur->forward[i]->value, v))
+          while (cur->forward[i] and comes_before (cur->forward[i]->value, v))
             cur = cur->forward[i];
           update[i] = cur;
         }
         // Zero out levels above current_level (they stay at header).
-        for (int i = current_level + 1; i < MAX_LEVEL; ++i)
+        for (int i = current_level + 1; i < max_level; ++i)
           update[i] = header;
       }
 
       // Remove a node given the update array pointing to its predecessors.
-      void unlink_node (Node* node, Node* update[MAX_LEVEL]) {
-        for (int i = 0; i <= node->level; ++i) {
-          if (update[i]->forward[i] != node)
+      void unlink_node (node* nd, std::array<node*, max_level>& update) {
+        for (int i = 0; i <= nd->level; ++i) {
+          if (update[i]->forward[i] != nd)
             break;
-          update[i]->forward[i] = node->forward[i];
+          update[i]->forward[i] = nd->forward[i];
         }
-        while (current_level > 0 && header->forward[current_level] == nullptr)
+        while (current_level > 0 and header->forward[current_level] == nullptr)
           --current_level;
         --list_size;
       }
 
     public:
-      skiplist () : header (new Node ()), current_level (0), list_size (0), dim (0) {}
+      skiplist () : header (new node ()) {}
 
       ~skiplist () {
-        Node* cur = header;
+        node* cur = header;
         while (cur) {
-          Node* next = cur->forward[0];
+          node* next = cur->forward[0];
           delete cur;
           cur = next;
         }
@@ -113,8 +111,8 @@ namespace posets::utils {
           current_level (other.current_level),
           list_size (other.list_size),
           dim (other.dim),
-          rng (std::move (other.rng)) {
-        other.header = new Node ();
+          rng (other.rng) {
+        other.header = new node ();
         other.current_level = 0;
         other.list_size = 0;
       }
@@ -123,9 +121,9 @@ namespace posets::utils {
         if (this == &other)
           return *this;
         // Free current contents.
-        Node* cur = header->forward[0];
+        node* cur = header->forward[0];
         while (cur) {
-          Node* next = cur->forward[0];
+          node* next = cur->forward[0];
           delete cur;
           cur = next;
         }
@@ -134,8 +132,8 @@ namespace posets::utils {
         current_level = other.current_level;
         list_size = other.list_size;
         dim = other.dim;
-        rng = std::move (other.rng);
-        other.header = new Node ();
+        rng = other.rng;
+        other.header = new node ();
         other.current_level = 0;
         other.list_size = 0;
         return *this;
@@ -148,7 +146,7 @@ namespace posets::utils {
       void push (V&& v) {
         if (dim == 0)
           dim = v.size ();
-        Node* update[MAX_LEVEL];
+        std::array<node*, max_level> update {};
         find_update (v, update);
 
         int lvl = random_level ();
@@ -158,7 +156,7 @@ namespace posets::utils {
           current_level = lvl;
         }
 
-        Node* new_node = new Node (std::move (v), lvl);
+        node* new_node = new node (std::move (v), lvl);
         for (int i = 0; i <= lvl; ++i) {
           new_node->forward[i] = update[i]->forward[i];
           update[i]->forward[i] = new_node;
@@ -172,14 +170,14 @@ namespace posets::utils {
           return false;
         int sv = get_sum (v);
         // Fast-forward to first element with sum >= sv.
-        Node* cur = header;
+        node* cur = header;
         for (int i = current_level; i >= 0; --i)
-          while (cur->forward[i] && get_sum (cur->forward[i]->value) < sv)
+          while (cur->forward[i] and get_sum (cur->forward[i]->value) < sv)
             cur = cur->forward[i];
         cur = cur->forward[0];
         while (cur) {
           auto po = v.partial_order (cur->value);
-          if (strict ? (po.leq () && !po.geq ()) : po.leq ())
+          if (strict ? (po.leq () and not po.geq ()) : po.leq ())
             return true;
           cur = cur->forward[0];
         }
@@ -192,17 +190,17 @@ namespace posets::utils {
           return;
         int sv = get_sum (v);
         // Only elements with sum <= sv can be dominated by v.
-        Node* update[MAX_LEVEL];
-        std::fill (update, update + MAX_LEVEL, header);
+        std::array<node*, max_level> update {};
+        update.fill (header);
 
         // Track predecessors at each level as we scan the prefix.
-        Node* prev[MAX_LEVEL];
-        std::fill (prev, prev + MAX_LEVEL, header);
+        std::array<node*, max_level> prev {};
+        prev.fill (header);
 
-        Node* cur = header->forward[0];
-        while (cur && get_sum (cur->value) <= sv) {
+        node* cur = header->forward[0];
+        while (cur and get_sum (cur->value) <= sv) {
           auto po = v.partial_order (cur->value);
-          Node* next = cur->forward[0];
+          node* next = cur->forward[0];
           if (po.geq ()) {
             // Build update array for this node.
             for (int i = 0; i <= cur->level; ++i)
@@ -225,7 +223,7 @@ namespace posets::utils {
       [[nodiscard]] std::vector<V> drain () {
         std::vector<V> result;
         result.reserve (list_size);
-        Node* cur = header->forward[0];
+        node* cur = header->forward[0];
         while (cur) {
           result.push_back (std::move (cur->value));
           cur = cur->forward[0];
@@ -236,13 +234,13 @@ namespace posets::utils {
 
       // Delete all data nodes.
       void clear () {
-        Node* cur = header->forward[0];
+        node* cur = header->forward[0];
         while (cur) {
-          Node* next = cur->forward[0];
+          node* next = cur->forward[0];
           delete cur;
           cur = next;
         }
-        std::fill (header->forward, header->forward + MAX_LEVEL, nullptr);
+        header->forward.fill (nullptr);
         current_level = 0;
         list_size = 0;
       }
@@ -253,7 +251,7 @@ namespace posets::utils {
           ++it2;
           for (; it2 != end (); ++it2) {
             auto po = it1->partial_order (*it2);
-            if (po.leq () || po.geq ())
+            if (po.leq () or po.geq ())
               return false;
           }
         }
@@ -271,8 +269,6 @@ namespace posets::utils {
           using pointer = const V*;
           using reference = const V&;
 
-          Node* cur;
-
           const V& operator* () const { return cur->value; }
           const V* operator->() const { return &cur->value; }
 
@@ -289,10 +285,15 @@ namespace posets::utils {
 
           bool operator== (const const_iterator& o) const { return cur == o.cur; }
           bool operator!= (const const_iterator& o) const { return cur != o.cur; }
+
+        private:
+          node* cur;
+          friend class skiplist;
+          explicit const_iterator (node* c) : cur (c) {}
       };
 
-      [[nodiscard]] const_iterator begin () const { return {header->forward[0]}; }
-      [[nodiscard]] const_iterator end () const { return {nullptr}; }
+      [[nodiscard]] const_iterator begin () const { return const_iterator (header->forward[0]); }
+      [[nodiscard]] const_iterator end () const { return const_iterator (nullptr); }
   };
 
   template <Vector V>
