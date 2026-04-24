@@ -269,6 +269,8 @@ namespace posets::utils {
           using pointer = const V*;
           using reference = const V&;
 
+          const_iterator () : cur (nullptr) {}
+
           const V& operator* () const { return cur->value; }
           const V* operator->() const { return &cur->value; }
 
