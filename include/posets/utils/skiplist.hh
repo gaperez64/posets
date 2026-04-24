@@ -40,7 +40,7 @@ namespace posets::utils {
       int current_level;
       size_t list_size;
       size_t dim;
-      mutable std::mt19937 rng{42};
+      mutable std::mt19937 rng {42};
 
       int get_sum (const V& v) const {
         int s = 0;
@@ -66,7 +66,7 @@ namespace posets::utils {
 
       int random_level () {
         int lvl = 0;
-        while (lvl < MAX_LEVEL - 1 && std::uniform_int_distribution<> (0, 1)(rng) == 1)
+        while (lvl < MAX_LEVEL - 1 && std::uniform_int_distribution<> (0, 1) (rng) == 1)
           ++lvl;
         return lvl;
       }
@@ -173,10 +173,9 @@ namespace posets::utils {
         int sv = get_sum (v);
         // Fast-forward to first element with sum >= sv.
         Node* cur = header;
-        for (int i = current_level; i >= 0; --i) {
+        for (int i = current_level; i >= 0; --i)
           while (cur->forward[i] && get_sum (cur->forward[i]->value) < sv)
             cur = cur->forward[i];
-        }
         cur = cur->forward[0];
         while (cur) {
           auto po = v.partial_order (cur->value);
@@ -210,7 +209,8 @@ namespace posets::utils {
               update[i] = prev[i];
             unlink_node (cur, update);
             delete cur;
-          } else {
+          }
+          else {
             // Advance prev pointers.
             for (int i = 0; i <= cur->level; ++i)
               prev[i] = cur;
@@ -274,7 +274,7 @@ namespace posets::utils {
           Node* cur;
 
           const V& operator* () const { return cur->value; }
-          const V* operator-> () const { return &cur->value; }
+          const V* operator->() const { return &cur->value; }
 
           const_iterator& operator++ () {
             cur = cur->forward[0];
