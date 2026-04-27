@@ -80,8 +80,8 @@ namespace posets::utils {
       int random_level () {
         int lvl = 0;
         // Promote to the next level with probability 1/branching_inv.
-        while (lvl < max_level - 1
-               and std::uniform_int_distribution<> (0, branching_inv - 1) (rng) == 0)
+        while (lvl < max_level - 1 and
+               std::uniform_int_distribution<> (0, branching_inv - 1) (rng) == 0)
           ++lvl;
         return lvl;
       }
