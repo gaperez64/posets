@@ -9,6 +9,18 @@
 
 #include <posets/concepts.hh>
 
+// Tunable knobs (override at build time with -DSKIPLIST_MAX_LEVEL=N
+// and -DSKIPLIST_BRANCHING_INV=K, where the per-level promotion
+// probability is 1/K).  Defaults of 10 and 4 (p=0.25) were picked from
+// a sweep on the syntcomp24 0s-20s suite; see the acacia-bonsai
+// best_decomp_skiplist_mona benchmarks.
+#ifndef SKIPLIST_MAX_LEVEL
+# define SKIPLIST_MAX_LEVEL 10
+#endif
+#ifndef SKIPLIST_BRANCHING_INV
+# define SKIPLIST_BRANCHING_INV 4
+#endif
+
 /*
  * A probabilistic skip list for variable-dimension vectors, sorted by
  * (L1 norm, then lexicographic).  The sort key enables pruning in dominance
@@ -20,7 +32,10 @@ namespace posets::utils {
   template <Vector V>
   class skiplist {
     private:
-      static constexpr int max_level = 16;
+      static constexpr int max_level = SKIPLIST_MAX_LEVEL;
+      static constexpr int branching_inv = SKIPLIST_BRANCHING_INV;
+      static_assert (max_level >= 1, "SKIPLIST_MAX_LEVEL must be >= 1");
+      static_assert (branching_inv >= 2, "SKIPLIST_BRANCHING_INV must be >= 2");
 
       struct node {
           V value;    // NOLINT(misc-non-private-member-variables-in-classes)
@@ -64,7 +79,9 @@ namespace posets::utils {
 
       int random_level () {
         int lvl = 0;
-        while (lvl < max_level - 1 and std::uniform_int_distribution<> (0, 1) (rng) == 1)
+        // Promote to the next level with probability 1/branching_inv.
+        while (lvl < max_level - 1
+               and std::uniform_int_distribution<> (0, branching_inv - 1) (rng) == 0)
           ++lvl;
         return lvl;
       }
