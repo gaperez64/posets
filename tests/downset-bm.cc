@@ -300,6 +300,7 @@ using set_types = template_type_list<
   posets::downsets::sharingtree_backed,
   posets::downsets::simple_sharingtree_backed,
   posets::downsets::sharingtrie_backed,
+  posets::downsets::skiplist_backed,
   posets::downsets::cst_backed
   >;
 
