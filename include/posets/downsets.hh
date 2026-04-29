@@ -1,6 +1,7 @@
 #pragma once
 
 #include <posets/concepts.hh>
+#include <posets/downsets/cst_backed.hh>
 #include <posets/downsets/full_set.hh>
 #include <posets/downsets/kdtree_backed.hh>
 #include <posets/downsets/set_backed.hh>
@@ -27,4 +28,5 @@ namespace posets::downsets {
   static_assert (Downset<sharingtree_backed<posets::vectors::vector_backed<int>>>);
   static_assert (Downset<simple_sharingtree_backed<posets::vectors::vector_backed<int>>>);
   static_assert (Downset<sharingtrie_backed<posets::vectors::vector_backed<int>>>);
+  static_assert (Downset<cst_backed<posets::vectors::vector_backed<int>>>);
 }

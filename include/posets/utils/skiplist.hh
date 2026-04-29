@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <random>
 #include <vector>
@@ -26,6 +27,13 @@
  * (L1 norm, then lexicographic).  The sort key enables pruning in dominance
  * queries: only elements with sum >= sum(v) can dominate v.
  *
+ * Storage layout: a single std::vector<node> holds every node contiguously
+ * (header at index 0); forward links are int32_t indices into that vector,
+ * not pointers.  This keeps allocations amortized O(1) and makes traversal
+ * cache-friendlier than the previous one-node-per-`new` layout, mirroring
+ * the buffer pattern in utils::kdtree and utils::sharingtrie.  Removed
+ * slots are reused via a free list threaded through forward[0].
+ *
  * Coded to mirror the interface of posets::utils::kdtree.
  */
 namespace posets::utils {
@@ -37,19 +45,29 @@ namespace posets::utils {
       static_assert (max_level >= 1, "SKIPLIST_MAX_LEVEL must be >= 1");
       static_assert (branching_inv >= 2, "SKIPLIST_BRANCHING_INV must be >= 2");
 
+      // Index sentinel for "null".  Indices fit comfortably in int32_t for
+      // the antichain sizes we care about (millions of elements).
+      static constexpr int32_t nil = -1;
+      static constexpr int32_t header_idx = 0;
+
       struct node {
           V value;    // NOLINT(misc-non-private-member-variables-in-classes)
           int level;  // NOLINT(misc-non-private-member-variables-in-classes)
-          std::array<node*, max_level>
-              forward {};  // NOLINT(misc-non-private-member-variables-in-classes)
+          std::array<int32_t, max_level>
+              forward;  // NOLINT(misc-non-private-member-variables-in-classes)
 
-          explicit node (V&& v, int lvl) : value (std::move (v)), level (lvl) {}
+          explicit node (V&& v, int lvl) : value (std::move (v)), level (lvl) {
+            forward.fill (nil);
+          }
 
-          // Header sentinel: no value, all levels enabled.
-          node () : value (1U), level (max_level - 1) {}
+          // Header sentinel: dummy 1-d V (never compared), all levels enabled.
+          node () : value (1U), level (max_level - 1) { forward.fill (nil); }
       };
 
-      node* header;
+      // nodes[0] is the header.  Subsequent slots are either live (reachable
+      // from header via level-0 forward links) or on the free list.
+      std::vector<node> nodes;
+      int32_t free_head {nil};
       int current_level {0};
       size_t list_size {0};
       size_t dim {0};
@@ -64,8 +82,8 @@ namespace posets::utils {
 
       // Strict total order: (sum, lex).
       bool comes_before (const V& a, const V& b) const {
-        int sa = get_sum (a);
-        int sb = get_sum (b);
+        const int sa = get_sum (a);
+        const int sb = get_sum (b);
         if (sa != sb)
           return sa < sb;
         for (size_t i = 0; i < dim; ++i) {
@@ -74,62 +92,91 @@ namespace posets::utils {
           if (a[i] > b[i])
             return false;
         }
-        return false;  // equal
+        return false;
       }
 
       int random_level () {
         int lvl = 0;
-        // Promote to the next level with probability 1/branching_inv.
         while (lvl < max_level - 1 and
                std::uniform_int_distribution<> (0, branching_inv - 1) (rng) == 0)
           ++lvl;
         return lvl;
       }
 
-      // Fill update[] with the last node at each level that comes before v.
-      void find_update (const V& v, std::array<node*, max_level>& update) const {
-        node* cur = header;
-        for (int i = current_level; i >= 0; --i) {
-          while (cur->forward[i] and comes_before (cur->forward[i]->value, v))
-            cur = cur->forward[i];
-          update[i] = cur;
+      // Allocate a node slot for `v` at level `lvl`.  Reuses a free-list slot
+      // if available, else appends to the nodes vector.  Returns the index;
+      // pointer-stable across vector growth (callers should hold indices).
+      int32_t alloc_node (V&& v, int lvl) {
+        if (free_head != nil) {
+          const int32_t idx = free_head;
+          // The dead slot was on the free list with forward[0] threaded to
+          // the next free node.  Read that before overwriting.
+          free_head = nodes[idx].forward[0];
+          nodes[idx].value = std::move (v);
+          nodes[idx].level = lvl;
+          nodes[idx].forward.fill (nil);
+          return idx;
         }
-        // Zero out levels above current_level (they stay at header).
-        for (int i = current_level + 1; i < max_level; ++i)
-          update[i] = header;
+        nodes.emplace_back (std::move (v), lvl);
+        return static_cast<int32_t> (nodes.size () - 1);
       }
 
-      // Remove a node given the update array pointing to its predecessors.
-      void unlink_node (node* nd, std::array<node*, max_level>& update) {
-        for (int i = 0; i <= nd->level; ++i) {
-          if (update[i]->forward[i] != nd)
-            break;
-          update[i]->forward[i] = nd->forward[i];
+      void free_node (int32_t idx) {
+        // Park the slot on the free list.  forward[0] becomes the link to
+        // the next free node; level/value are left as is and overwritten on
+        // the next alloc_node.
+        nodes[idx].forward[0] = free_head;
+        free_head = idx;
+      }
+
+      // Fill update[] with the index of the last node at each level that
+      // comes before v.
+      void find_update (const V& v, std::array<int32_t, max_level>& update) const {
+        int32_t cur = header_idx;
+        for (int i = current_level; i >= 0; --i) {
+          int32_t next;
+          while ((next = nodes[cur].forward[i]) != nil and comes_before (nodes[next].value, v))
+            cur = next;
+          update[i] = cur;
         }
-        while (current_level > 0 and header->forward[current_level] == nullptr)
+        for (int i = current_level + 1; i < max_level; ++i)
+          update[i] = header_idx;
+      }
+
+      // Splice node `nd` out, given update[] populated with its predecessors.
+      void unlink_node (int32_t nd, const std::array<int32_t, max_level>& update) {
+        const int lvl = nodes[nd].level;
+        for (int i = 0; i <= lvl; ++i) {
+          if (nodes[update[i]].forward[i] != nd)
+            break;
+          nodes[update[i]].forward[i] = nodes[nd].forward[i];
+        }
+        while (current_level > 0 and nodes[header_idx].forward[current_level] == nil)
           --current_level;
         --list_size;
       }
 
     public:
-      skiplist () : header (new node ()) {}
-
-      ~skiplist () {
-        node* cur = header;
-        while (cur) {
-          node* next = cur->forward[0];
-          delete cur;
-          cur = next;
-        }
+      skiplist () {
+        // Reserve a small batch up-front so the very first inserts don't
+        // realloc; arbitrary modest size, grows geometrically afterwards.
+        nodes.reserve (16);
+        nodes.emplace_back ();  // header at index 0
       }
 
+      ~skiplist () = default;
+
       skiplist (skiplist&& other) noexcept
-        : header (other.header),
+        : nodes (std::move (other.nodes)),
+          free_head (other.free_head),
           current_level (other.current_level),
           list_size (other.list_size),
           dim (other.dim),
           rng (other.rng) {
-        other.header = new node ();
+        // Restore other to a valid empty state with a fresh header.
+        other.nodes.clear ();
+        other.nodes.emplace_back ();
+        other.free_head = nil;
         other.current_level = 0;
         other.list_size = 0;
       }
@@ -137,20 +184,15 @@ namespace posets::utils {
       skiplist& operator= (skiplist&& other) noexcept {
         if (this == &other)
           return *this;
-        // Free current contents.
-        node* cur = header->forward[0];
-        while (cur) {
-          node* next = cur->forward[0];
-          delete cur;
-          cur = next;
-        }
-        delete header;
-        header = other.header;
+        nodes = std::move (other.nodes);
+        free_head = other.free_head;
         current_level = other.current_level;
         list_size = other.list_size;
         dim = other.dim;
         rng = other.rng;
-        other.header = new node ();
+        other.nodes.clear ();
+        other.nodes.emplace_back ();
+        other.free_head = nil;
         other.current_level = 0;
         other.list_size = 0;
         return *this;
@@ -163,20 +205,22 @@ namespace posets::utils {
       void push (V&& v) {
         if (dim == 0)
           dim = v.size ();
-        std::array<node*, max_level> update {};
+        std::array<int32_t, max_level> update {};
         find_update (v, update);
 
-        int lvl = random_level ();
+        const int lvl = random_level ();
         if (lvl > current_level) {
           for (int i = current_level + 1; i <= lvl; ++i)
-            update[i] = header;
+            update[i] = header_idx;
           current_level = lvl;
         }
 
-        node* new_node = new node (std::move (v), lvl);
+        // alloc_node may realloc nodes; do it before threading update[] in.
+        // update[] holds indices, so it survives the realloc unscathed.
+        const int32_t new_idx = alloc_node (std::move (v), lvl);
         for (int i = 0; i <= lvl; ++i) {
-          new_node->forward[i] = update[i]->forward[i];
-          update[i]->forward[i] = new_node;
+          nodes[new_idx].forward[i] = nodes[update[i]].forward[i];
+          nodes[update[i]].forward[i] = new_idx;
         }
         ++list_size;
       }
@@ -185,18 +229,21 @@ namespace posets::utils {
       [[nodiscard]] bool dominates (const V& v, bool strict = false) const {
         if (list_size == 0)
           return false;
-        int sv = get_sum (v);
-        // Fast-forward to first element with sum >= sv.
-        node* cur = header;
-        for (int i = current_level; i >= 0; --i)
-          while (cur->forward[i] and get_sum (cur->forward[i]->value) < sv)
-            cur = cur->forward[i];
-        cur = cur->forward[0];
-        while (cur) {
-          auto po = v.partial_order (cur->value);
+        const int sv = get_sum (v);
+        // Fast-forward to the first element with sum >= sv via the upper
+        // levels, then linear-scan at level 0.
+        int32_t cur = header_idx;
+        for (int i = current_level; i >= 0; --i) {
+          int32_t next;
+          while ((next = nodes[cur].forward[i]) != nil and get_sum (nodes[next].value) < sv)
+            cur = next;
+        }
+        cur = nodes[cur].forward[0];
+        while (cur != nil) {
+          auto po = v.partial_order (nodes[cur].value);
           if (strict ? (po.leq () and not po.geq ()) : po.leq ())
             return true;
-          cur = cur->forward[0];
+          cur = nodes[cur].forward[0];
         }
         return false;
       }
@@ -205,59 +252,52 @@ namespace posets::utils {
       void remove_dominated_by (const V& v) {
         if (list_size == 0)
           return;
-        int sv = get_sum (v);
-        // Only elements with sum <= sv can be dominated by v.
-        std::array<node*, max_level> update {};
-        update.fill (header);
+        const int sv = get_sum (v);
+        std::array<int32_t, max_level> update {};
+        update.fill (header_idx);
 
-        // Track predecessors at each level as we scan the prefix.
-        std::array<node*, max_level> prev {};
-        prev.fill (header);
+        // Predecessors at each level as we walk the prefix.
+        std::array<int32_t, max_level> prev {};
+        prev.fill (header_idx);
 
-        node* cur = header->forward[0];
-        while (cur and get_sum (cur->value) <= sv) {
-          auto po = v.partial_order (cur->value);
-          node* next = cur->forward[0];
+        int32_t cur = nodes[header_idx].forward[0];
+        while (cur != nil and get_sum (nodes[cur].value) <= sv) {
+          auto po = v.partial_order (nodes[cur].value);
+          const int32_t next = nodes[cur].forward[0];
           if (po.geq ()) {
-            // Build update array for this node.
-            for (int i = 0; i <= cur->level; ++i)
+            const int lvl = nodes[cur].level;
+            for (int i = 0; i <= lvl; ++i)
               update[i] = prev[i];
             unlink_node (cur, update);
-            delete cur;
+            free_node (cur);
           }
           else {
-            // Advance prev pointers.
-            for (int i = 0; i <= cur->level; ++i)
+            const int lvl = nodes[cur].level;
+            for (int i = 0; i <= lvl; ++i)
               prev[i] = cur;
           }
           cur = next;
         }
-        // Advance prev for all remaining levels if we didn't reach those nodes.
-        // (Already handled above; unlink_node adjusts current_level.)
       }
 
       // Move all values out, leaving the list empty.
       [[nodiscard]] std::vector<V> drain () {
         std::vector<V> result;
         result.reserve (list_size);
-        node* cur = header->forward[0];
-        while (cur) {
-          result.push_back (std::move (cur->value));
-          cur = cur->forward[0];
+        int32_t cur = nodes[header_idx].forward[0];
+        while (cur != nil) {
+          result.push_back (std::move (nodes[cur].value));
+          cur = nodes[cur].forward[0];
         }
         clear ();
         return result;
       }
 
-      // Delete all data nodes.
+      // Reset to an empty list (just the header).  Releases all node memory.
       void clear () {
-        node* cur = header->forward[0];
-        while (cur) {
-          node* next = cur->forward[0];
-          delete cur;
-          cur = next;
-        }
-        header->forward.fill (nullptr);
+        nodes.clear ();
+        nodes.emplace_back ();  // fresh header
+        free_head = nil;
         current_level = 0;
         list_size = 0;
       }
@@ -278,7 +318,10 @@ namespace posets::utils {
       [[nodiscard]] auto size () const { return list_size; }
       [[nodiscard]] bool empty () const { return list_size == 0; }
 
-      // Forward iterator over the level-0 chain.
+      // Forward iterator over the level-0 chain.  Holds an index + a back-
+      // pointer to the owning skiplist so it can dereference; references to
+      // elements remain stable as long as no insertion is performed during
+      // iteration (insertions may realloc the underlying nodes vector).
       struct const_iterator {
           using iterator_category = std::forward_iterator_tag;
           using value_type = V;
@@ -286,19 +329,19 @@ namespace posets::utils {
           using pointer = const V*;
           using reference = const V&;
 
-          const_iterator () : cur (nullptr) {}
+          const_iterator () : sl (nullptr), cur (nil) {}
 
-          const V& operator* () const { return cur->value; }
-          const V* operator->() const { return &cur->value; }
+          const V& operator* () const { return sl->nodes[cur].value; }
+          const V* operator->() const { return &sl->nodes[cur].value; }
 
           const_iterator& operator++ () {
-            cur = cur->forward[0];
+            cur = sl->nodes[cur].forward[0];
             return *this;
           }
 
           const_iterator operator++ (int) {
             const_iterator tmp = *this;
-            cur = cur->forward[0];
+            cur = sl->nodes[cur].forward[0];
             return tmp;
           }
 
@@ -306,13 +349,16 @@ namespace posets::utils {
           bool operator!= (const const_iterator& o) const { return cur != o.cur; }
 
         private:
-          node* cur;
+          const skiplist* sl;
+          int32_t cur;
           friend class skiplist;
-          explicit const_iterator (node* c) : cur (c) {}
+          const_iterator (const skiplist* s, int32_t c) : sl (s), cur (c) {}
       };
 
-      [[nodiscard]] const_iterator begin () const { return const_iterator (header->forward[0]); }
-      [[nodiscard]] const_iterator end () const { return const_iterator (nullptr); }
+      [[nodiscard]] const_iterator begin () const {
+        return const_iterator (this, nodes[header_idx].forward[0]);
+      }
+      [[nodiscard]] const_iterator end () const { return const_iterator (this, nil); }
   };
 
   template <Vector V>

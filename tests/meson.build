@@ -8,6 +8,9 @@ kdtests_exe = executable ('kdtests', 'kdtests.cc',
 sttests_exe = executable ('sttests', 'sttests.cc',
                           dependencies : [posets_dep ])
 
+csttests_exe = executable ('csttests', 'csttests.cc',
+                           dependencies : [posets_dep ])
+
 simdbm_exe = executable ('simd-bm', 'simd-bm.cc',
                          dependencies : [posets_dep ])
 
@@ -22,4 +25,5 @@ test('antichains/vectors random', downsetbm_exe,
 test('antichains/vectors implementations', tests_exe, args : ['all', 'all'])
 test('antichains/vectors kdtests', kdtests_exe)
 test('antichains/vectors sttests', sttests_exe)
+test('antichains/vectors csttests', csttests_exe)
 test('antichains/vectors lcrstests', lcrstests_exe)
