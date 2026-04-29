@@ -299,7 +299,8 @@ using set_types = template_type_list<
   posets::downsets::vector_backed_one_dim_split_intersection_only,
   posets::downsets::sharingtree_backed,
   posets::downsets::simple_sharingtree_backed,
-  posets::downsets::sharingtrie_backed
+  posets::downsets::sharingtrie_backed,
+  posets::downsets::cst_backed
   >;
 
 
