@@ -1,32 +1,42 @@
 #pragma once
 
 #include <posets/concepts.hh>
-#include <posets/downsets/cst_backed.hh>
-#include <posets/downsets/full_set.hh>
-#include <posets/downsets/kdtree_backed.hh>
-#include <posets/downsets/set_backed.hh>
-#include <posets/downsets/sharingtree_backed.hh>
-#include <posets/downsets/sharingtrie_backed.hh>
-#include <posets/downsets/simple_sharingtree_backed.hh>
-#include <posets/downsets/skiplist_backed.hh>
-#include <posets/downsets/vector_backed.hh>
-#include <posets/downsets/vector_backed_bin.hh>
-#include <posets/downsets/vector_backed_one_dim_split_intersection_only.hh>
-#include <posets/downsets/vector_or_kdtree_backed.hh>
+#include <posets/config.hh>
 #include <posets/vectors.hh>
 
-namespace posets::downsets {
-  static_assert (Downset<full_set<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<kdtree_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<skiplist_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<vector_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<vector_or_kdtree_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<vector_backed_bin<posets::vectors::vector_backed<int>>>);
-  static_assert (
-      Downset<vector_backed_one_dim_split_intersection_only<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<set_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<sharingtree_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<simple_sharingtree_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<sharingtrie_backed<posets::vectors::vector_backed<int>>>);
-  static_assert (Downset<cst_backed<posets::vectors::vector_backed<int>>>);
-}
+#if POSETS_ENABLE_DOWNSET_CST_BACKED
+# include <posets/downsets/cst_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_FULL_SET
+# include <posets/downsets/full_set.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_KDTREE_BACKED
+# include <posets/downsets/kdtree_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_SET_BACKED
+# include <posets/downsets/set_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_SHARINGTREE_BACKED
+# include <posets/downsets/sharingtree_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_SHARINGTRIE_BACKED
+# include <posets/downsets/sharingtrie_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_SIMPLE_SHARINGTREE_BACKED
+# include <posets/downsets/simple_sharingtree_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_SKIPLIST_BACKED
+# include <posets/downsets/skiplist_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_VECTOR_BACKED
+# include <posets/downsets/vector_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_VECTOR_BACKED_BIN
+# include <posets/downsets/vector_backed_bin.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_VECTOR_BACKED_ONE_DIM_SPLIT_INTERSECTION_ONLY
+# include <posets/downsets/vector_backed_one_dim_split_intersection_only.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_VECTOR_OR_KDTREE_BACKED
+# include <posets/downsets/vector_or_kdtree_backed.hh>
+#endif

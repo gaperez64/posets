@@ -157,7 +157,7 @@ namespace posets::utils {
       }
 
     public:
-      skiplist () {
+      skiplist () {  // NOLINT(modernize-use-equals-default)
         // Reserve a small batch up-front so the very first inserts don't
         // realloc; arbitrary modest size, grows geometrically afterwards.
         nodes.reserve (16);

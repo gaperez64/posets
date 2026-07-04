@@ -242,18 +242,19 @@ namespace posets::utils {
               size_t* c1_children = child_buffer + c1_node.cbuffer_offset;
               size_t* c2_children = child_buffer + c2_node.cbuffer_offset;
               // In some cases, we can eliminate the subtree altogether
-              if (c1_node.label < c2_node.label or
+              const bool can_eliminate =
+                  c1_node.label < c2_node.label or
                   (layidx + 1 < this->dim and
                    layers[layidx + 2][c1_children[0]].label <
-                       layers[layidx + 2][c2_children[c2_node.numchild - 1]].label)) {
+                       layers[layidx + 2][c2_children[c2_node.numchild - 1]].label);
+              if (can_eliminate) {
                 simulates_stack.emplace_back (n1idx, c1 + 1, n2idx, c2, layidx);
-                // Alright, we have to go deeper now; and push back what we just
-                // popped
+                continue;
               }
-              else {
-                simulates_stack.emplace_back (n1idx, c1, n2idx, c2, layidx);
-                simulates_stack.emplace_back (n1_children[c1], 0, n2_children[c2], 0, layidx + 1);
-              }
+              // Alright, we have to go deeper now; and push back what we just
+              // popped.
+              simulates_stack.emplace_back (n1idx, c1, n2idx, c2, layidx);
+              simulates_stack.emplace_back (n1_children[c1], 0, n2_children[c2], 0, layidx + 1);
             }
           }
         }
@@ -427,13 +428,10 @@ namespace posets::utils {
               continue;
             }
             // Not found, so draft a node up
-            if (layer < this->dim) {
-              layers[layer].emplace_back (node_s.label, 0,
-                                          add_children (node_s.numchild + node_t.numchild));
-            }
-            else {
-              layers[layer].emplace_back (node_s.label, 0);
-            }
+            st_node draft_node {node_s.label, 0};
+            if (layer < this->dim)
+              draft_node.cbuffer_offset = add_children (node_s.numchild + node_t.numchild);
+            layers[layer].push_back (draft_node);
           }
 
           auto& under_construction = layers[layer].back ();
@@ -756,13 +754,10 @@ namespace posets::utils {
               continue;
             }
             // Not found, so draft a node up
-            if (layer < this->dim) {
-              layers[layer].emplace_back (std::min (node_s.label, node_t.label), 0,
-                                          add_children (node_s.numchild + node_t.numchild));
-            }
-            else {
-              layers[layer].emplace_back (std::min (node_s.label, node_t.label), 0);
-            }
+            st_node draft_node {std::min (node_s.label, node_t.label), 0};
+            if (layer < this->dim)
+              draft_node.cbuffer_offset = add_children (node_s.numchild + node_t.numchild);
+            layers[layer].push_back (draft_node);
           }
 
           // This is our base case, we've iterated through all the children in the
@@ -924,8 +919,8 @@ namespace posets::utils {
         For testing: Check that all children are ordered descending
       */
       bool check_child_order () {
-        size_t layer_num = 0;
-        for (auto& l : layers) {
+        for (size_t layer_num = 0; layer_num < layers.size (); ++layer_num) {
+          auto& l = layers[layer_num];
           for (st_node& n : l) {
             size_t* children = child_buffer + n.cbuffer_offset;
             for (size_t i = 1; i < n.numchild; i++) {
@@ -936,7 +931,6 @@ namespace posets::utils {
               }
             }
           }
-          layer_num++;
         }
         return true;
       }

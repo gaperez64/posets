@@ -226,7 +226,8 @@ namespace posets::utils {
         assert (not layers.empty ());
         auto element_vec = std::forward<R> (elements);
         std::vector<size_t> vector_ids (element_vec.size ());
-        std::iota (vector_ids.begin (), vector_ids.end (), 0);
+        for (size_t i = 0; i < vector_ids.size (); ++i)
+          vector_ids[i] = i;
         return build_node (vector_ids, 0, vector_ids.size (), 0, 0, element_vec);
       }
 
@@ -245,8 +246,7 @@ namespace posets::utils {
         sum_t maxm = 0;
         for (size_t i = 0; i < dim; ++i) {
           totalm += static_cast<sum_t> (covered[i]);
-          if (static_cast<sum_t> (covered[i]) > maxm)
-            maxm = static_cast<sum_t> (covered[i]);
+          maxm = std::max (static_cast<sum_t> (covered[i]), maxm);
           msum[i + 1] = totalm;
           mmax[i + 1] = maxm;
         }

@@ -97,7 +97,7 @@ namespace posets::downsets {
           };
           // If x wasn't <= an element in other, then x is not in the
           // intersection, thus the set is updated.
-          smaller_set or_eq not dominated;
+          smaller_set = smaller_set or not dominated;
         }
 
         if (smaller_set)
