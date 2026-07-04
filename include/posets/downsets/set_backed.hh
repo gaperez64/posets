@@ -41,27 +41,21 @@ namespace posets::downsets {
 
       bool insert (V&& v) {
         utils::reference_wrapper_set<const V> to_remove;
-        bool should_be_inserted = true;
 
         for (const auto& e : vector_set) {
           auto po = v.partial_order (e);
-          if (po.leq ()) {
-            should_be_inserted = false;
-            break;
-          }
-          if (po.geq ()) {
-            should_be_inserted = true;
+          if (po.leq ())
+            return false;
+          if (po.geq ())
             to_remove.insert (std::cref (e));
-          }
         }
 
         for (const auto& elt : to_remove)
           vector_set.erase (elt.get ());
 
-        if (should_be_inserted)
-          vector_set.insert (std::move (v));
+        vector_set.insert (std::move (v));
 
-        return should_be_inserted;
+        return true;
       }
 
       void union_with (set_backed&& other) {
@@ -86,7 +80,7 @@ namespace posets::downsets {
           }
           // If x wasn't <= an element in other, then x is not in the
           // intersection, thus the set is updated.
-          smaller_set or_eq not dominated;
+          smaller_set = smaller_set or not dominated;
         }
 
         if (smaller_set)

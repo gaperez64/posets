@@ -10,7 +10,7 @@ jobs:
         sudo apt-get -y install zsh git gcc python-is-python3 ninja-build gnupg wget python3-pip python3-setuptools pkg-config libglib2.0-dev libffi-dev autoconf automake libtool bison flex valgrind clang-format clang-tidy
         sudo pip install --upgrade meson
     - name: Checkout repository and submodules
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: recursive
     - name: Test that everything is tidy

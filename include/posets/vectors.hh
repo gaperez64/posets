@@ -1,9 +1,15 @@
 #pragma once
 
 #include <posets/concepts.hh>
-#include <posets/vectors/X_and_bitset.hh>
-#include <posets/vectors/X_and_boolvec.hh>
+#include <posets/config.hh>
 #include <posets/vectors/generic.hh>
+
+#if POSETS_ENABLE_VECTOR_X_AND_BITSET
+# include <posets/vectors/X_and_bitset.hh>
+#endif
+#if POSETS_ENABLE_VECTOR_X_AND_BOOLVEC
+# include <posets/vectors/X_and_boolvec.hh>
+#endif
 
 namespace posets::vectors {
 
@@ -36,7 +42,7 @@ namespace posets::vectors {
   template <typename T>
   using simd_vector_backed_sum = generic<simd_vector_t<T>, true, true>;
 
-#define ITEMS_PER_BLOCK 8
+  inline constexpr size_t ITEMS_PER_BLOCK = POSETS_ITEMS_PER_BLOCK;
 
   template <typename T, size_t K>
   using array_t =
@@ -87,22 +93,6 @@ namespace posets::vectors {
       }
   };
 
-  static_assert (Vector<simd_array_backed<int, 128>>);
-  static_assert (Vector<simd_array_backed_sum<int, 128>>);
-  static_assert (Vector<simd_array_ptr_backed<int, 128>>);
-  static_assert (Vector<simd_array_ptr_backed_sum<int, 128>>);
-  static_assert (Vector<simd_vector_backed<int>>);
-  static_assert (Vector<simd_vector_backed_sum<int>>);
-
-  static_assert (Vector<array_backed<int, 128>>);
-  static_assert (Vector<array_backed_sum<int, 128>>);
-  static_assert (Vector<array_ptr_backed<int, 128>>);
-  static_assert (Vector<array_ptr_backed_sum<int, 128>>);
-  static_assert (Vector<vector_backed<int>>);
-  static_assert (Vector<vector_backed_sum<int>>);
-
-  static_assert (Vector<x_and_bitset<vector_backed<int>, 128>>);
-  static_assert (Vector<x_and_boolvec<vector_backed<int>>>);
 }
 
 namespace std {
