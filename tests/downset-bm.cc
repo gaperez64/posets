@@ -18,6 +18,7 @@
 #include <random>
 #include <ranges>
 #include <algorithm>
+#include <cstdint>
 
 #include <getopt.h>
 
@@ -52,7 +53,7 @@ size_t posets::vectors::bitset_threshold = DIMENSION;
 int               utils::verbose = 0;
 utils::voutstream utils::vout;
 
-using test_value_type = uint8_t;
+using test_value_type = std::int8_t;
 
 using result_t = std::map<std::string, double>;
 

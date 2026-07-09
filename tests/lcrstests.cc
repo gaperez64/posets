@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 
 #include <posets/utils/sharingtrie.hh>
@@ -5,9 +6,10 @@
 
 namespace utils = posets::utils;
 
-using VType = posets::vectors::vector_backed<char>;
+using test_value_type = std::int8_t;
+using VType = posets::vectors::vector_backed<test_value_type>;
 
-std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
+std::vector<VType> vvtovv (const std::vector<std::vector<test_value_type>>& vv) {
   std::vector<VType> out;
   for (size_t i = 0; i < vv.size (); ++i)
     out.emplace_back (VType (std::move (vv[i])));
@@ -15,32 +17,32 @@ std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
 }
 
 int main (int argc, const char* argv[]) {
-  std::vector<std::vector<char>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
+  std::vector<std::vector<test_value_type>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
   utils::sharingtrie<VType> f1 (std::move (vvtovv (data)));
   std::cout << f1 << std::endl;
   assert (f1.get_all ().size () == 3);
   {
-    std::vector<char> v = {5, 2, 1};
+    std::vector<test_value_type> v = {5, 2, 1};
     VType vec (std::move (v));
     assert (f1.dominates (vec));
   }
   {
-    std::vector<char> v = {6, 3, 2};
+    std::vector<test_value_type> v = {6, 3, 2};
     VType vec (std::move (v));
     assert (not f1.dominates (vec, true));
   }
   {
-    std::vector<char> v = {6, 3, 2};
+    std::vector<test_value_type> v = {6, 3, 2};
     VType vec (std::move (v));
     assert (f1.dominates (vec));
   }
   {
-    std::vector<char> v = {7, 7, 7};
+    std::vector<test_value_type> v = {7, 7, 7};
     VType vec (std::move (v));
     assert (not f1.dominates (vec));
   }
   {
-    std::vector<char> v = {1, 6, 2};
+    std::vector<test_value_type> v = {1, 6, 2};
     VType vec (std::move (v));
     assert (f1.dominates (vec));
   }
@@ -51,22 +53,22 @@ int main (int argc, const char* argv[]) {
   std::cout << f2 << std::endl;
   assert (f2.get_all ().size () == 4);
   {
-    std::vector<char> v = {1, 6, 2};
+    std::vector<test_value_type> v = {1, 6, 2};
     VType vec (std::move (v));
     assert (f2.dominates (vec));
   }
   {
-    std::vector<char> v = {7, 7, 7};
+    std::vector<test_value_type> v = {7, 7, 7};
     VType vec (std::move (v));
     assert (not f2.dominates (vec));
   }
   {
-    std::vector<char> v = {2, 5, 6};
+    std::vector<test_value_type> v = {2, 5, 6};
     VType vec (std::move (v));
     assert (f2.dominates (vec));
   }
   {
-    std::vector<char> v = {2, 5, 6};
+    std::vector<test_value_type> v = {2, 5, 6};
     VType vec (std::move (v));
     assert (not f2.dominates (vec, true));
   }
@@ -76,22 +78,22 @@ int main (int argc, const char* argv[]) {
   std::cout << f3 << std::endl;
   assert (f3.get_all ().size () == 3);
   {
-    std::vector<char> v = {1, 2, 2, 1};
+    std::vector<test_value_type> v = {1, 2, 2, 1};
     VType vec (std::move (v));
     assert (f3.dominates (vec));
   }
   {
-    std::vector<char> v = {7, 7, 7, 0};
+    std::vector<test_value_type> v = {7, 7, 7, 0};
     VType vec (std::move (v));
     assert (not f3.dominates (vec));
   }
   {
-    std::vector<char> v = {4, 1, 2, 1};
+    std::vector<test_value_type> v = {4, 1, 2, 1};
     VType vec (std::move (v));
     assert (f3.dominates (vec));
   }
   {
-    std::vector<char> v = {4, 1, 2, 1};
+    std::vector<test_value_type> v = {4, 1, 2, 1};
     VType vec (std::move (v));
     assert (not f3.dominates (vec, true));
   }
@@ -100,19 +102,19 @@ int main (int argc, const char* argv[]) {
   utils::sharingtrie<VType> f4 (std::move (vvtovv (data)));
   std::cout << f4 << std::endl;
   {
-    std::vector<char> v = {-1, 0};
+    std::vector<test_value_type> v = {-1, 0};
     VType vec (std::move (v));
     assert (f4.dominates (vec));
     assert (f4.dominates (vec, true));
   }
   {
-    std::vector<char> v = {-1, 1};
+    std::vector<test_value_type> v = {-1, 1};
     VType vec (std::move (v));
     assert (f4.dominates (vec));
     assert (not f4.dominates (vec, true));
   }
   {
-    std::vector<char> v = {0, -1};
+    std::vector<test_value_type> v = {0, -1};
     VType vec (std::move (v));
     assert (f4.dominates (vec));
     assert (not f4.dominates (vec, true));

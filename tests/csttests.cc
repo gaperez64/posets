@@ -4,6 +4,7 @@
 // CST utility can be benchmarked apples-to-apples against sharingforest.
 
 #include <cassert>
+#include <cstdint>
 #include <vector>
 
 #include <posets/utils/cst.hh>
@@ -11,9 +12,10 @@
 
 namespace utils = posets::utils;
 
-using VType = posets::vectors::vector_backed<char>;
+using test_value_type = std::int8_t;
+using VType = posets::vectors::vector_backed<test_value_type>;
 
-static std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
+static std::vector<VType> vvtovv (const std::vector<std::vector<test_value_type>>& vv) {
   std::vector<VType> out;
   out.reserve (vv.size ());
   for (size_t i = 0; i < vv.size (); ++i)
@@ -24,10 +26,10 @@ static std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
 int main () {
   // ----- Single-tree covers tests on a 3-dim CST -----------------------
   utils::cst<VType> f {3};
-  std::vector<std::vector<char>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
+  std::vector<std::vector<test_value_type>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
   auto idcs = f.add_vectors (vvtovv (data));
 
-  std::vector<char> v = {2, 2, 2};
+  std::vector<test_value_type> v = {2, 2, 2};
   assert (f.covers_vector (idcs, VType (std::move (v))));
   v = {6, 3, 1};
   assert (f.covers_vector (idcs, VType (std::move (v))));

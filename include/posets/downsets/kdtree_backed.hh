@@ -34,7 +34,7 @@ namespace posets::downsets {
           V&& operator() (V*&& pv) { return std::move (*pv); }
       };
 
-      void reset_tree (std::vector<V>&& elements) noexcept {
+      void reset_tree (std::vector<V>&& elements) {
         std::vector<V*> pelements;
         pelements.reserve (elements.size ());
         for (auto& e : elements)
@@ -81,7 +81,7 @@ namespace posets::downsets {
 
       kdtree_backed () = delete;
 
-      kdtree_backed (std::vector<V>&& elements) noexcept { reset_tree (std::move (elements)); }
+      kdtree_backed (std::vector<V>&& elements) { reset_tree (std::move (elements)); }
 
       kdtree_backed (V&& e) : tree (std::array<V, 1> {std::move (e)}) {}
 

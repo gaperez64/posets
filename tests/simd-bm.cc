@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <type_traits>
+#include <cstdint>
 #include <cxxabi.h>
 #include <experimental/random>
 
@@ -26,7 +27,7 @@ size_t posets::vectors::bool_threshold = 2 * DIMENSION;
 size_t posets::vectors::bitset_threshold = 2 * DIMENSION;
 
 namespace utils = posets::utils;
-using test_value_type = char;
+using test_value_type = std::int8_t;
 
 template <typename T>
 auto random_vector () {

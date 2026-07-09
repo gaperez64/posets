@@ -131,7 +131,7 @@ namespace posets::downsets {
 
       vector_or_kdtree_backed () = delete;
 
-      vector_or_kdtree_backed (std::vector<V>&& elements) noexcept {
+      vector_or_kdtree_backed (std::vector<V>&& elements) {
         assert (not elements.empty ());
         const size_t m = elements.size ();
         const size_t dim = elements[0].size ();

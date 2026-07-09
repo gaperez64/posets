@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <type_traits>
+#include <cstdint>
 #include <cxxabi.h>
 
 #include "test_maker.hh"
@@ -17,13 +18,15 @@
 size_t posets::vectors::bool_threshold = 128;
 size_t posets::vectors::bitset_threshold = 128;
 
-#define il std::initializer_list<char>
+using test_value_type = std::int8_t;
+
+#define il std::initializer_list<test_value_type>
 
 template<typename SetType>
 struct test_t : public generic_test<void> {
     using VType = typename SetType::value_type;
 
-    std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
+    std::vector<VType> vvtovv (const std::vector<std::vector<test_value_type>>& vv) {
       std::vector<VType> out;
       //out.reserve (vv.size ());
 
@@ -425,16 +428,16 @@ namespace posets::vectors {
 #define VECTOR_TYPES(...) FOR_EACH(DEFINE_VECTOR_NAME, __VA_ARGS__)     \
   using vector_types = type_list<__VA_ARGS__>;
 
-VECTOR_TYPES (posets::vectors::vector_backed<char>,
-              posets::vectors::array_backed_fixed<char>,
-              posets::vectors::array_backed_sum_fixed<char>,
-              posets::vectors::simd_vector_backed<char>,
-              posets::vectors::simd_array_backed_fixed<char>,
-              posets::vectors::simd_array_ptr_backed_fixed<char>,
-              posets::vectors::simd_array_backed_sum_fixed<char>,
-              posets::vectors::simd_array_ptr_backed_sum_fixed<char>,
-              posets::vectors::simd_vector_and_bitset_backed<char>,
-              posets::vectors::simd_vector_and_boolvec_backed<char>);
+VECTOR_TYPES (posets::vectors::vector_backed<test_value_type>,
+              posets::vectors::array_backed_fixed<test_value_type>,
+              posets::vectors::array_backed_sum_fixed<test_value_type>,
+              posets::vectors::simd_vector_backed<test_value_type>,
+              posets::vectors::simd_array_backed_fixed<test_value_type>,
+              posets::vectors::simd_array_ptr_backed_fixed<test_value_type>,
+              posets::vectors::simd_array_backed_sum_fixed<test_value_type>,
+              posets::vectors::simd_array_ptr_backed_sum_fixed<test_value_type>,
+              posets::vectors::simd_vector_and_bitset_backed<test_value_type>,
+              posets::vectors::simd_vector_and_boolvec_backed<test_value_type>);
 
 using set_types = template_type_list<//posets::downsets::full_set, ; too slow.
   posets::downsets::sharingtree_backed,

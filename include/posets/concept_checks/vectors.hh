@@ -18,6 +18,7 @@ namespace posets::vectors::concept_checks {
   static_assert (posets::Vector<array_ptr_backed_sum<int, 128>>);
   static_assert (posets::Vector<vector_backed<int>>);
   static_assert (posets::Vector<vector_backed_sum<int>>);
+  static_assert (not posets::Vector<vector_backed<unsigned int>>);
 
   using vector_test_int = vector_backed<int>;
   static_assert (posets::Vector<x_and_bitset<vector_test_int, 128>>);

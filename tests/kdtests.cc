@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdint>
 #include <ostream>
 #include <vector>
 #include <string>
@@ -9,10 +10,11 @@
 
 namespace utils = posets::utils;
 
-using SetType = posets::downsets::kdtree_backed<posets::vectors::vector_backed<char>>;
+using test_value_type = std::int8_t;
+using SetType = posets::downsets::kdtree_backed<posets::vectors::vector_backed<test_value_type>>;
 using VType = typename SetType::value_type;
 
-std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
+std::vector<VType> vvtovv (const std::vector<std::vector<test_value_type>>& vv) {
   std::vector<VType> out;
   for (size_t i = 0; i < vv.size (); ++i)
     out.emplace_back(VType (std::move (vv[i])));
@@ -30,7 +32,7 @@ int checkList(std::vector<VType>&& list) {
 
   // next, we want to check whether a known element is contained in the list
   // we know for a fact it is dominated by an element in the list
-  VType element (std::initializer_list<char> (
+  VType element (std::initializer_list<test_value_type> (
     { 5, 3, 4, 3, 8, 7, 5, 10, 0, 12, 0, 5, 2, 10, 0, 2, 9, 1, 7, 0, 7, 4, 4, 1, 2, 5, 1, 8, 7, 0, 3, 5 }
   ));
   std::cout << "checking domination of a known element" << std::endl;
@@ -46,7 +48,7 @@ int checkList(std::vector<VType>&& list) {
 
   return 0;
 }
-#define il std::initializer_list<char>
+#define il std::initializer_list<test_value_type>
 int test() {
   utils::kdtree<VType> tree (vvtovv ({
                                {-1, 0},

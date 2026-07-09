@@ -12,6 +12,7 @@ namespace posets {
       not std::is_default_constructible_v<T> and std::is_constructible_v<T, unsigned int> and
       not std::is_copy_constructible_v<T> and not std::is_copy_assignable_v<T> and
       std::is_move_constructible_v<T> and std::is_move_assignable_v<T> and
+      std::is_signed_v<typename T::value_type> and
       std::is_constructible_v<T, std::span<const typename T::value_type>> and
       requires (T t1, T t2) { t1 == t2 and t1 != t2; } and
       requires (const T& t1, const T& t2, std::span<typename T::value_type> s, std::ostream& os) {

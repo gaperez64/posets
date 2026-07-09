@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 
 #include <posets/utils/sharingforest.hh>
@@ -5,9 +6,10 @@
 
 namespace utils = posets::utils;
 
-using VType = posets::vectors::vector_backed<char>;
+using test_value_type = std::int8_t;
+using VType = posets::vectors::vector_backed<test_value_type>;
 
-std::vector<VType> vvtovv (const std::vector<std::vector<char>>& vv) {
+std::vector<VType> vvtovv (const std::vector<std::vector<test_value_type>>& vv) {
   std::vector<VType> out;
   for (size_t i = 0; i < vv.size (); ++i)
     out.emplace_back (VType (std::move (vv[i])));
@@ -19,11 +21,11 @@ int main (int argc, const char* argv[]) {
   utils::sharingforest<VType> f4 {4};
 
   // Add some vectors to create a tree
-  std::vector<std::vector<char>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
+  std::vector<std::vector<test_value_type>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
   auto idcs = f.add_vectors (std::move (vvtovv (data)));
   std::cout << f << std::endl;
   f.print_children (idcs, 0);
-  std::vector<char> v = {2, 2, 2};
+  std::vector<test_value_type> v = {2, 2, 2};
   assert (f.covers_vector (idcs, VType (std::move (v))));
   v = {6, 3, 1};
   assert (f.covers_vector (idcs, VType (std::move (v))));
@@ -34,7 +36,7 @@ int main (int argc, const char* argv[]) {
 
   // We do some longer examples
   utils::sharingforest<VType> f10 {10};
-  std::vector<std::vector<char>> longdata {{2, 4, 1, 8, 7, 4, 1, 10, 2, 8}};
+  std::vector<std::vector<test_value_type>> longdata {{2, 4, 1, 8, 7, 4, 1, 10, 2, 8}};
   auto longidcs = f10.add_vectors (std::move (vvtovv (longdata)));
   v = {2, 4, 1, 8, 5, 4, 1, 8, 1, 9};
   assert (not f10.covers_vector (longidcs, VType (std::move (v))));
