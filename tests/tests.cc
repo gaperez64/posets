@@ -442,6 +442,8 @@ using set_types = template_type_list<//posets::downsets::full_set, ; too slow.
   posets::downsets::sharingtrie_backed,
   posets::downsets::cst_backed,
   posets::downsets::kdtree_backed,
+  posets::downsets::rank_bucketed_vector_backed,
+  posets::downsets::filtered_vector_backed,
   posets::downsets::skiplist_backed,
   posets::downsets::vector_or_kdtree_backed,
   posets::downsets::set_backed,

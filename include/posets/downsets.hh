@@ -7,6 +7,9 @@
 #if POSETS_ENABLE_DOWNSET_CST_BACKED
 # include <posets/downsets/cst_backed.hh>
 #endif
+#if POSETS_ENABLE_DOWNSET_FILTERED_VECTOR_BACKED
+# include <posets/downsets/filtered_vector_backed.hh>
+#endif
 #if POSETS_ENABLE_DOWNSET_FULL_SET
 # include <posets/downsets/full_set.hh>
 #endif
@@ -27,6 +30,9 @@
 #endif
 #if POSETS_ENABLE_DOWNSET_SKIPLIST_BACKED
 # include <posets/downsets/skiplist_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_RANK_BUCKETED_VECTOR_BACKED
+# include <posets/downsets/rank_bucketed_vector_backed.hh>
 #endif
 #if POSETS_ENABLE_DOWNSET_VECTOR_BACKED
 # include <posets/downsets/vector_backed.hh>

@@ -295,6 +295,8 @@ using set_types = template_type_list<
   posets::downsets::kdtree_backed,
   posets::downsets::vector_or_kdtree_backed,
   posets::downsets::vector_backed,
+  posets::downsets::rank_bucketed_vector_backed,
+  posets::downsets::filtered_vector_backed,
   posets::downsets::vector_backed_bin,
   posets::downsets::vector_backed_one_dim_split_intersection_only,
   posets::downsets::sharingtree_backed,
