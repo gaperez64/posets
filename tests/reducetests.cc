@@ -1,3 +1,4 @@
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -91,5 +92,15 @@ int main () {
   for (size_t i = 0; i < POSETS_REDUCE_SCAN_THRESHOLD + 64; ++i)
     large.push_back ({{static_cast<value_type> (i % 4), static_cast<value_type> ((i / 4) % 4),
                        static_cast<value_type> ((i / 16) % 4)}});
-  check_reduce<with_sum> (large);
+  // The generic oracle in check_reduce is intentionally quadratic and would
+  // dwarf the structure-assisted path for this threshold-sized input,
+  // especially under Valgrind.  This data contains every point of {0..3}^3
+  // repeatedly, so its unique maximum is known exactly.
+  std::vector<long> keys;
+  auto reduced = posets::utils::reduce_to_maxima (make_vectors<with_sum> (large), &keys);
+  constexpr std::array<value_type, 3> expected_data {3, 3, 3};
+  with_sum expected {std::span<const value_type> (expected_data)};
+  assert (reduced.size () == 1);
+  assert (reduced.front () == expected);
+  assert (keys == std::vector<long> {9});
 }
