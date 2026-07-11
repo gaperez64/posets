@@ -17,6 +17,19 @@ simdbm_exe = executable ('simd-bm', 'simd-bm.cc',
 downsetbm_exe = executable ('downset-bm', 'downset-bm.cc',
                             dependencies : [posets_dep ])
 
+downsetbm_d128_exe = executable ('downset-bm-d128', 'downset-bm.cc',
+                                 dependencies : [posets_dep ],
+                                 cpp_args : '-DDIMENSION=128')
+
+reducetests_exe = executable ('reducetests', 'reducetests.cc',
+                              dependencies : [posets_dep ])
+
+bboxtests_exe = executable ('bboxtests', 'bboxtests.cc',
+                            dependencies : [posets_dep ])
+
+comptrietests_exe = executable ('comptrietests', 'comptrietests.cc',
+                                dependencies : [posets_dep ])
+
 lcrstests_exe = executable ('lcrstests', 'lcrstests.cc',
                             dependencies : [posets_dep ])
 
@@ -33,5 +46,8 @@ test('antichains/vectors kdtests', kdtests_exe)
 test('antichains/vectors sttests', sttests_exe)
 test('antichains/vectors csttests', csttests_exe)
 test('antichains/vectors lcrstests', lcrstests_exe)
+test('antichains/vectors reduce', reducetests_exe)
+test('antichains/vectors bboxtree', bboxtests_exe)
+test('antichains/vectors comptrie', comptrietests_exe)
 test('antichains/vectors concept checks', concept_checks_exe)
 test('antichains/vectors pruned concept checks', pruned_concept_checks_exe)

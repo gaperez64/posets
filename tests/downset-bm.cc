@@ -293,6 +293,8 @@ VECTOR_TYPES (
   );
 
 using set_types = template_type_list<
+  posets::downsets::bboxtree_backed,
+  posets::downsets::comptrie_backed,
   posets::downsets::kdtree_backed,
   posets::downsets::vector_or_kdtree_backed,
   posets::downsets::vector_backed,

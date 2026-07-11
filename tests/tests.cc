@@ -127,6 +127,11 @@ struct test_t : public generic_test<void> {
       VType v3 (il {4, 1, 1});
       VType v4 (il {0, 1, 2});
 
+      auto meet = v1.meet (v2);
+      auto join = v1.join (v2);
+      assert (meet == VType (il {1, 2, 1}));
+      assert (join == VType (il {2, 5, 3}));
+
       // singleton checks
       std::cout << "Singleton checks" << std::endl;
       assert(v1.size () > 0);
@@ -440,6 +445,8 @@ VECTOR_TYPES (posets::vectors::vector_backed<test_value_type>,
               posets::vectors::simd_vector_and_boolvec_backed<test_value_type>);
 
 using set_types = template_type_list<//posets::downsets::full_set, ; too slow.
+  posets::downsets::bboxtree_backed,
+  posets::downsets::comptrie_backed,
   posets::downsets::sharingtree_backed,
   posets::downsets::simple_sharingtree_backed,
   posets::downsets::sharingtrie_backed,

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <posets/concepts.hh>
+#include <posets/utils/reduce.hh>
 #include <posets/utils/sharingforest.hh>
 
 namespace posets::downsets {
@@ -43,23 +44,13 @@ namespace posets::downsets {
       // Code borrowed from kdtree_backed, same idea as there
       // to keep the antichain of max elements only
       void reset_tree (std::vector<V>&& elements) noexcept {
-        const size_t temp_tree = this->forest->add_vectors (std::move (elements), false);
-        this->vector_set = this->forest->get_all (temp_tree);
-
-        // we can use the temporary tree to eliminate dominated elements
+        this->vector_set = utils::reduce_to_maxima (std::move (elements));
         std::vector<V> antichain;
-        std::vector<V> result;
         antichain.reserve (this->vector_set.size ());
-        result.reserve (this->vector_set.size ());
-        for (auto& e : this->vector_set) {
-          if (not this->forest->covers_vector (temp_tree, e, true)) {
-            antichain.push_back (e.copy ());
-            result.push_back (std::move (e));
-          }
-        }
+        for (const auto& e : this->vector_set)
+          antichain.push_back (e.copy ());
 
         this->root = this->forest->add_vectors (std::move (antichain), false);
-        this->vector_set = std::move (result);
       }
 
       [[nodiscard]] bool is_antichain () const {

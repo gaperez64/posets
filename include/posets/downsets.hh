@@ -4,6 +4,12 @@
 #include <posets/config.hh>
 #include <posets/vectors.hh>
 
+#if POSETS_ENABLE_DOWNSET_BBOXTREE_BACKED
+# include <posets/downsets/bboxtree_backed.hh>
+#endif
+#if POSETS_ENABLE_DOWNSET_COMPTRIE_BACKED
+# include <posets/downsets/comptrie_backed.hh>
+#endif
 #if POSETS_ENABLE_DOWNSET_CST_BACKED
 # include <posets/downsets/cst_backed.hh>
 #endif

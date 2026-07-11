@@ -210,6 +210,30 @@ namespace posets::vectors {
         return res;
       }
 
+      [[nodiscard]] generic join (const generic& rhs) const {
+        auto res = generic (k);
+        if constexpr (not EmbedsData)
+          res.datap = this->malloc.construct ();
+
+        for (size_t i = 0; i < data_size (); ++i) {
+          if constexpr (uses_simd)
+            res.data ()[i] = std::experimental::max (data ()[i], rhs.data ()[i]);
+          else
+            for (size_t j = 0; j < items_per_block; ++j) {
+              const auto pos = (i * items_per_block) + j;
+              res.at (pos) = std::max ((*this)[pos], rhs[pos]);
+            }
+
+          // SIMD reductions over narrow element types can overflow, so keep
+          // the scalar accumulation used by meet().
+          if constexpr (HasSum)
+            for (size_t j = 0; j < items_per_block; ++j)
+              res.sum += res.data ()[i][j];
+        }
+
+        return res;
+      }
+
       [[nodiscard]] auto size () const { return k; }
 
       auto& print (std::ostream& os) const {
@@ -243,6 +267,12 @@ namespace posets::vectors {
           return std::abs (this->sum) / k;
         else
           return std::abs ((*this)[0]) / k;  // NOLINT(clang-diagnostic-absolute-value)
+      }
+
+      [[nodiscard]] int cached_sum () const
+        requires HasSum
+      {
+        return this->sum;
       }
 
     private:

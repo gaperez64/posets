@@ -7,6 +7,7 @@
 
 #include <posets/concepts.hh>
 #include <posets/utils/kdtree.hh>
+#include <posets/utils/reduce.hh>
 
 namespace posets::downsets {
   // Forward definition for the operator<<s.
@@ -35,44 +36,9 @@ namespace posets::downsets {
       };
 
       void reset_tree (std::vector<V>&& elements) {
-        std::vector<V*> pelements;
-        pelements.reserve (elements.size ());
-        for (auto& e : elements)
-          pelements.push_back (&e);
-
-        std::sort (pelements.begin (), pelements.end (),
-                   // A strict total order.
-                   [] (const V* v1, const V* v2) {
-                     // A quite costly thing to do.
-                     for (size_t i = 0; i < v1->size (); ++i) {
-                       if ((*v1)[i] > (*v2)[i])
-                         return false;
-                       if ((*v1)[i] < (*v2)[i])
-                         return true;
-                     }
-                     // Equal MUST return false.
-                     return false;
-                   });
-
-        // then remove duplicates
-        size_t dups_pos = pelements.size ();
-        for (size_t i = pelements.size () - 1; i > 0; --i)
-          if (*pelements[i] == *pelements[i - 1])
-            std::swap (pelements[i], pelements[--dups_pos]);
-        if (dups_pos != pelements.size ())
-          pelements.erase (pelements.begin () + dups_pos, pelements.end ());
-
-        // now, we can make a tree out of the set to eliminate dominated
-        // elements
-        auto antichain = std::vector<V*> ();
-        antichain.reserve (pelements.size ());
-        this->tree.relabel_tree (std::move (pelements), proj ());
-
-        for (V& e : this->tree)
-          if (not this->tree.dominates (e, true))
-            antichain.push_back (&e);
-
-        this->tree.relabel_tree (std::move (antichain), proj ());
+        auto antichain = utils::reduce_to_maxima (std::move (elements));
+        assert (not antichain.empty ());
+        this->tree.relabel_tree (std::move (antichain));
         assert (this->tree.is_antichain ());
       }
 
@@ -120,6 +86,14 @@ namespace posets::downsets {
         for (auto& e : other.tree)
           if (not this->tree.dominates (e))
             result.push_back (&e);
+
+        if (result.size () == this->size ()) {
+          bool unchanged = true;
+          for (size_t i = 0; i < result.size (); ++i)
+            unchanged and_eq result[i] == &this->tree.get_backing_vector ()[i];
+          if (unchanged)
+            return;
+        }
 
         // ready to rebuild the tree now
         assert (not result.empty ());

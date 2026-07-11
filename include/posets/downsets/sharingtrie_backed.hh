@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <posets/concepts.hh>
+#include <posets/utils/reduce.hh>
 #include <posets/utils/sharingtrie.hh>
 
 namespace posets::downsets {
@@ -31,40 +32,9 @@ namespace posets::downsets {
       };
 
       void reset_trie (std::vector<V>&& elements) noexcept {
-        std::vector<V*> pelements;
-        pelements.reserve (elements.size ());
-        for (auto& e : elements)
-          pelements.push_back (&e);
-
-        // Sort and remove duplicates before building the trie so we can
-        // iterate the trie's backing vector directly, avoiding get_all()'s
-        // O(n*dim) allocation+copy purely for deduplication.
-        std::sort (pelements.begin (), pelements.end (), [] (const V* v1, const V* v2) {
-          for (size_t i = 0; i < v1->size (); ++i) {
-            if ((*v1)[i] > (*v2)[i])
-              return false;
-            if ((*v1)[i] < (*v2)[i])
-              return true;
-          }
-          return false;
-        });
-        size_t dups_pos = pelements.size ();
-        for (size_t i = pelements.size () - 1; i > 0; --i)
-          if (*pelements[i] == *pelements[i - 1])
-            std::swap (pelements[i], pelements[--dups_pos]);
-        if (dups_pos != pelements.size ())
-          pelements.erase (pelements.begin () + dups_pos, pelements.end ());
-
-        // Build the trie; backing vector now holds the deduplicated elements.
-        auto antichain = std::vector<V*> ();
-        antichain.reserve (pelements.size ());
-        this->trie.relabel_trie (std::move (pelements), proj ());
-
-        for (V& e : this->trie)
-          if (not this->trie.dominates (e, true))
-            antichain.push_back (&e);
-
-        this->trie.relabel_trie (std::move (antichain), proj ());
+        auto antichain = utils::reduce_to_maxima (std::move (elements));
+        assert (not antichain.empty ());
+        this->trie.relabel_trie (std::move (antichain));
         assert (this->trie.is_antichain ());
       }
 
@@ -114,6 +84,14 @@ namespace posets::downsets {
         for (auto& e : other.trie)
           if (not this->trie.dominates (e))
             result.push_back (&e);
+
+        if (result.size () == this->size ()) {
+          bool unchanged = true;
+          for (size_t i = 0; i < result.size (); ++i)
+            unchanged and_eq result[i] == &this->trie.get_backing_vector ()[i];
+          if (unchanged)
+            return;
+        }
 
         // ready to rebuild the tree now
         assert (not result.empty ());

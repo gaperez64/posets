@@ -126,6 +126,20 @@ namespace posets::vectors {
         return x_and_boolvec (k, x.meet (rhs.x), std::move (res));
       }
 
+      [[nodiscard]] x_and_boolvec join (const x_and_boolvec& rhs) const {
+        assert (rhs.k == k);
+        std::vector<bool> res (bools.size (), false);
+        std::transform (bools.cbegin (), bools.cend (), rhs.bools.cbegin (), res.begin (),
+                        [] (bool lhs, bool rhs) { return lhs or rhs; });
+        return x_and_boolvec (k, x.join (rhs.x), std::move (res));
+      }
+
+      [[nodiscard]] long cached_sum () const
+        requires requires (const X& inner) { inner.cached_sum (); }
+      {
+        return static_cast<long> (sum) + static_cast<long> (x.cached_sum ());
+      }
+
       bool operator< (const x_and_boolvec& rhs) const {
         auto cmp = bools <=> rhs.bools;  // three-way comparison
         if (cmp == 0)

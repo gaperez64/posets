@@ -130,6 +130,17 @@ namespace posets::vectors {
         return x_and_bitset (k, x.meet (rhs.x), bools bitand rhs.bools);
       }
 
+      [[nodiscard]] x_and_bitset join (const x_and_bitset& rhs) const {
+        assert (rhs.k == k);
+        return x_and_bitset (k, x.join (rhs.x), bools bitor rhs.bools);
+      }
+
+      [[nodiscard]] long cached_sum () const
+        requires requires (const X& inner) { inner.cached_sum (); }
+      {
+        return static_cast<long> (sum) + static_cast<long> (x.cached_sum ());
+      }
+
       bool operator< (const x_and_bitset& rhs) const {
         int cmp = std::memcmp (&bools, &rhs.bools, sizeof (bools));
         if (cmp == 0)
@@ -173,5 +184,6 @@ namespace posets::vectors {
       x_and_bitset (X&& x) : X (std::move (x)) {}
       x_and_bitset copy () const { return X::copy (); }
       x_and_bitset meet (const x_and_bitset& other) const { return X::meet (other); }
+      x_and_bitset join (const x_and_bitset& other) const { return X::join (other); }
   };
 }
