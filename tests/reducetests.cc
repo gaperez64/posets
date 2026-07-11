@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <random>
 #include <vector>
 
@@ -22,7 +23,12 @@ std::vector<V> make_vectors (const std::vector<std::vector<value_type>>& raw) {
 
 template <typename V>
 void check_reduce (const std::vector<std::vector<value_type>>& raw) {
-  auto reduced = posets::utils::reduce_to_maxima (make_vectors<V> (raw));
+  std::vector<long> keys;
+  auto reduced = posets::utils::reduce_to_maxima (make_vectors<V> (raw), &keys);
+  assert (keys.size () == reduced.size ());
+  assert (std::ranges::is_sorted (keys, std::greater<> {}));
+  for (size_t i = 0; i < reduced.size (); ++i)
+    assert (keys[i] == posets::utils::sum_key (reduced[i]));
   std::vector<size_t> expected;
   for (size_t i = 0; i < raw.size (); ++i) {
     V candidate (std::span<const value_type> (raw[i]));

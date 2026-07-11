@@ -42,7 +42,7 @@ namespace posets::vectors {
             has_bgeq = true;
           if (not bleq)
             has_bleq = true;
-          if (has_bgeq or has_bgeq)
+          if (has_bgeq or has_bleq)
             return;
         }
         has_bgeq = true;

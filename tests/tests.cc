@@ -131,6 +131,12 @@ struct test_t : public generic_test<void> {
       auto join = v1.join (v2);
       assert (meet == VType (il {1, 2, 1}));
       assert (join == VType (il {2, 5, 3}));
+      auto meet_in_place = v1.copy ();
+      meet_in_place.meet_with (v2);
+      assert (meet_in_place == meet);
+      auto join_in_place = v1.copy ();
+      join_in_place.join_with (v2);
+      assert (join_in_place == join);
 
       // singleton checks
       std::cout << "Singleton checks" << std::endl;

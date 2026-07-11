@@ -177,6 +177,14 @@ struct test_t : public generic_test<result_t> {
             chk (test_chk.t1_in, in, true);
             chk (test_chk.t1_out, out, true);
           }
+#ifdef POSETS_BBOX_STATS
+          if constexpr (requires (const SetType& stats_set) {
+                          stats_set.print_bbox_stats (std::cerr);
+                        }) {
+            set.print_bbox_stats (std::cerr);
+            std::cerr << '\n';
+          }
+#endif
           if (auto tr = params["transfer"]) {
             verb_do (2, vout << "TRANSFER..." << std::flush);
             sw.start ();

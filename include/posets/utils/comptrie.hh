@@ -59,7 +59,7 @@ namespace posets::utils {
           std::array<bool, 256> seen {};
           for (const auto& value : vector_set)
             seen[static_cast<unsigned char> (value[d])] = true;
-          distinct[d] = std::count (seen.begin (), seen.end (), true);
+          distinct[d] = std::count (seen.begin (), seen.end (), true);  // NOLINT(boost-use-ranges)
         }
         std::stable_sort (
             selected->begin (), selected->end (),
@@ -68,6 +68,8 @@ namespace posets::utils {
         perm_map[dim] = selected;
       }
 
+      // The recursion follows trie depth and is bounded by the vector dimension.
+      // NOLINTBEGIN(misc-no-recursion)
       [[nodiscard]] int32_t build_level (const std::vector<uint32_t>& order, size_t begin,
                                          size_t end, uint32_t depth) {
         int32_t first = -1;
@@ -108,6 +110,7 @@ namespace posets::utils {
         }
         return first;
       }
+      // NOLINTEND(misc-no-recursion)
 
       void color_as_dfa () {
         // Equal compressed suffixes receive equal colors.  The color is only
@@ -146,9 +149,9 @@ namespace posets::utils {
         label_pool.clear ();
 
         std::vector<uint32_t> order (vector_set.size ());
-        std::iota (order.begin (), order.end (), 0);
+        std::iota (order.begin (), order.end (), 0);  // NOLINT(boost-use-ranges)
         std::stable_sort (order.begin (), order.end (), [this] (uint32_t lhs, uint32_t rhs) {
-          for (uint32_t d : *perm)
+          for (const uint32_t d : *perm)
             if (vector_set[lhs][d] != vector_set[rhs][d])
               return vector_set[lhs][d] > vector_set[rhs][d];
           return false;

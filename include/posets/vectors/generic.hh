@@ -234,6 +234,46 @@ namespace posets::vectors {
         return res;
       }
 
+      void meet_with (const generic& rhs) {
+        assert (k == rhs.k);
+        int updated_sum = 0;  // NOLINT(misc-const-correctness): mutated only in HasSum variants.
+        for (size_t i = 0; i < data_size (); ++i) {
+          if constexpr (uses_simd)
+            data ()[i] = std::experimental::min (data ()[i], rhs.data ()[i]);
+          else
+            for (size_t j = 0; j < items_per_block; ++j) {
+              const auto pos = (i * items_per_block) + j;
+              at (pos) = std::min ((*this)[pos], rhs[pos]);
+            }
+
+          if constexpr (HasSum)
+            for (size_t j = 0; j < items_per_block; ++j)
+              updated_sum += data ()[i][j];
+        }
+        if constexpr (HasSum)
+          this->sum = updated_sum;
+      }
+
+      void join_with (const generic& rhs) {
+        assert (k == rhs.k);
+        int updated_sum = 0;  // NOLINT(misc-const-correctness): mutated only in HasSum variants.
+        for (size_t i = 0; i < data_size (); ++i) {
+          if constexpr (uses_simd)
+            data ()[i] = std::experimental::max (data ()[i], rhs.data ()[i]);
+          else
+            for (size_t j = 0; j < items_per_block; ++j) {
+              const auto pos = (i * items_per_block) + j;
+              at (pos) = std::max ((*this)[pos], rhs[pos]);
+            }
+
+          if constexpr (HasSum)
+            for (size_t j = 0; j < items_per_block; ++j)
+              updated_sum += data ()[i][j];
+        }
+        if constexpr (HasSum)
+          this->sum = updated_sum;
+      }
+
       [[nodiscard]] auto size () const { return k; }
 
       auto& print (std::ostream& os) const {
