@@ -20,8 +20,12 @@ namespace posets {
         { t1.partial_order (t2).geq () } -> std::same_as<bool>;
         { t1.partial_order (t2).leq () } -> std::same_as<bool>;
         { t1.meet (t2) } -> std::same_as<T>;
+        { t1.join (t2) } -> std::same_as<T>;
         { t1.to_vector (s) };
         { t1.print (os) } -> std::same_as<std::ostream&>;
+      } and requires (T& t1, const T& t2) {
+        { t1.meet_with (t2) } -> std::same_as<void>;
+        { t1.join_with (t2) } -> std::same_as<void>;
       };
 
   template <typename T, typename V = typename T::value_type>

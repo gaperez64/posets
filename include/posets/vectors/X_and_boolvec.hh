@@ -1,6 +1,8 @@
 #pragma once
 
 #include <numeric>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include <posets/concepts.hh>
@@ -70,8 +72,13 @@ namespace posets::vectors {
       }
 
       class po_res {
+          using inner_order =
+              decltype (std::declval<const X&> ().partial_order (std::declval<const X&> ()));
+
         public:
-          po_res (const x_and_boolvec& lhs, const x_and_boolvec& rhs) {
+          po_res (const x_and_boolvec& lhs, const x_and_boolvec& rhs)
+            : lhs_x {lhs.x},
+              rhs_x {rhs.x} {
             // Note that we are putting the bitset first in that comparison.
             bgeq = (lhs.sum >= rhs.sum);
             bleq = (lhs.sum <= rhs.sum);
@@ -83,20 +90,40 @@ namespace posets::vectors {
                   bleq and ((not lhs.bools[i - bool_threshold]) or rhs.bools[i - bool_threshold]);
             }
 
-            if (not bgeq and not bleq)
-              return;
-
-            auto po = lhs.x.partial_order (rhs.x);
-            bgeq = bgeq and po.geq ();
-            bleq = bleq and po.leq ();
+            has_bgeq = not bgeq;
+            has_bleq = not bleq;
           }
 
-          bool geq () { return bgeq; }
+          bool geq () {
+            if (not has_bgeq) {
+              has_bgeq = true;
+              bgeq = order ().geq ();
+            }
+            return bgeq;
+          }
 
-          bool leq () { return bleq; }
+          bool leq () {
+            if (not has_bleq) {
+              has_bleq = true;
+              bleq = order ().leq ();
+            }
+            return bleq;
+          }
 
         private:
-          bool bgeq, bleq;
+          inner_order& order () {
+            if (not inner.has_value ())
+              inner.emplace (lhs_x.partial_order (rhs_x));
+            return *inner;
+          }
+
+          const X& lhs_x;
+          const X& rhs_x;
+          std::optional<inner_order> inner;
+          bool bgeq;
+          bool bleq;
+          bool has_bgeq;
+          bool has_bleq;
       };
 
       [[nodiscard]] auto partial_order (const x_and_boolvec& rhs) const {
@@ -124,6 +151,36 @@ namespace posets::vectors {
         std::transform (bools.cbegin (), bools.cend (), rhs.bools.cbegin (), res.begin (),
                         [] (bool x, bool y) { return x and y; });
         return x_and_boolvec (k, x.meet (rhs.x), std::move (res));
+      }
+
+      [[nodiscard]] x_and_boolvec join (const x_and_boolvec& rhs) const {
+        assert (rhs.k == k);
+        std::vector<bool> res (bools.size (), false);
+        std::transform (bools.cbegin (), bools.cend (), rhs.bools.cbegin (), res.begin (),
+                        [] (bool lhs, bool rhs) { return lhs or rhs; });
+        return x_and_boolvec (k, x.join (rhs.x), std::move (res));
+      }
+
+      void meet_with (const x_and_boolvec& rhs) {
+        assert (rhs.k == k);
+        x.meet_with (rhs.x);
+        for (size_t i = 0; i < bools.size (); ++i)
+          bools[i] = bools[i] and rhs.bools[i];
+        sum = std::accumulate (bools.begin (), bools.end (), 0U);  // NOLINT(boost-use-ranges)
+      }
+
+      void join_with (const x_and_boolvec& rhs) {
+        assert (rhs.k == k);
+        x.join_with (rhs.x);
+        for (size_t i = 0; i < bools.size (); ++i)
+          bools[i] = bools[i] or rhs.bools[i];
+        sum = std::accumulate (bools.begin (), bools.end (), 0U);  // NOLINT(boost-use-ranges)
+      }
+
+      [[nodiscard]] long cached_sum () const
+        requires requires (const X& inner) { inner.cached_sum (); }
+      {
+        return static_cast<long> (sum) + static_cast<long> (x.cached_sum ());
       }
 
       bool operator< (const x_and_boolvec& rhs) const {

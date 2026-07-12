@@ -112,6 +112,8 @@ namespace posets::utils {
       std::vector<std::tuple<size_t, size_t, bool, size_t>> covers_stack;
       std::vector<std::unordered_map<size_t, bool>> covers_visited;
       mutable std::vector<std::tuple<size_t, size_t, size_t>> get_all_stack;
+      mutable std::vector<std::unordered_map<size_t, size_t>> count_cache;
+      mutable std::vector<std::tuple<size_t, size_t, bool>> count_stack;
 
       void init (size_t dim) {
         this->dim = dim;
@@ -124,6 +126,7 @@ namespace posets::utils {
           cached_inter.emplace_back ();
         }
         covers_visited.resize (dim + 1);
+        count_cache.resize (dim + 1);
 
         cbuffer_size = SHARINGFOREST_INIT_LAYER_SIZE * SHARINGFOREST_INIT_MAX_CHILDREN;
         child_buffer = new size_t[cbuffer_size];
@@ -686,6 +689,67 @@ namespace posets::utils {
           }
         }
         return res;
+      }
+
+      [[nodiscard]] size_t count_vectors (size_t root) const {
+        for (auto& layer : count_cache)
+          layer.clear ();
+        count_stack.clear ();
+        count_stack.emplace_back (0, root, false);
+
+        while (not count_stack.empty ()) {
+          const auto [layer, index, expanded] = count_stack.back ();
+          count_stack.pop_back ();
+          if (count_cache[layer].contains (index))
+            continue;
+          const st_node& current = layers[layer][index];
+          if (layer == dim) {
+            count_cache[layer][index] = 1;
+            continue;
+          }
+          if (not expanded) {
+            count_stack.emplace_back (layer, index, true);
+            const size_t* children = child_buffer + current.cbuffer_offset;
+            for (size_t i = 0; i < current.numchild; ++i)
+              if (not count_cache[layer + 1].contains (children[i]))
+                count_stack.emplace_back (layer + 1, children[i], false);
+          }
+          else {
+            size_t count = 0;
+            const size_t* children = child_buffer + current.cbuffer_offset;
+            for (size_t i = 0; i < current.numchild; ++i)
+              count += count_cache[layer + 1].at (children[i]);
+            count_cache[layer][index] = count;
+          }
+        }
+        return count_cache[0].at (root);
+      }
+
+      [[nodiscard]] size_t node_count () const {
+        return std::accumulate (
+            layers.begin (), layers.end (), size_t {0},
+            [] (size_t count, const auto& layer) { return count + layer.size (); });
+      }
+
+      void clear () {
+        delete[] child_buffer;
+        layers.clear ();
+        inverse.clear ();
+        simulating.clear ();
+        cached_union.clear ();
+        cached_inter.clear ();
+        simulates_stack.clear ();
+        node_union_stack.clear ();
+        st_intersect_stack.clear ();
+        covers_stack.clear ();
+        covers_visited.clear ();
+        get_all_stack.clear ();
+        count_cache.clear ();
+        count_stack.clear ();
+        child_buffer = nullptr;
+        cbuffer_size = 0;
+        cbuffer_nxt = 0;
+        init (dim);
       }
 
       void print_children (size_t n, size_t layer) {

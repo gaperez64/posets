@@ -1,6 +1,8 @@
 #pragma once
 
 #include <posets/concept_checks/vectors.hh>
+#include <posets/downsets/bboxtree_backed.hh>
+#include <posets/downsets/comptrie_backed.hh>
 #include <posets/downsets/cst_backed.hh>
 #include <posets/downsets/filtered_vector_backed.hh>
 #include <posets/downsets/full_set.hh>
@@ -20,6 +22,8 @@ namespace posets::downsets::concept_checks {
   using vector_test_int = posets::vectors::concept_checks::vector_test_int;
 
   static_assert (posets::Downset<full_set<vector_test_int>>);
+  static_assert (posets::Downset<bboxtree_backed<vector_test_int>>);
+  static_assert (posets::Downset<comptrie_backed<vector_test_int>>);
   static_assert (posets::Downset<filtered_vector_backed<vector_test_int>>);
   static_assert (posets::Downset<kdtree_backed<vector_test_int>>);
   static_assert (posets::Downset<rank_bucketed_vector_backed<vector_test_int>>);

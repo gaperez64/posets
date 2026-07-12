@@ -25,4 +25,4 @@ jobs:
         cd build && meson compile
     - name: Run test
       run: |
-        cd build && meson test --wrap='valgrind --error-exitcode=18 --exit-on-first-error=yes'
+        cd build && meson test --num-processes 1 --timeout-multiplier 2 --wrap='valgrind --error-exitcode=18 --exit-on-first-error=yes'

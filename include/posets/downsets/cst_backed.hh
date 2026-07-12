@@ -15,6 +15,7 @@
 
 #include <posets/concepts.hh>
 #include <posets/utils/cst.hh>
+#include <posets/utils/reduce.hh>
 
 namespace posets::downsets {
 
@@ -47,21 +48,12 @@ namespace posets::downsets {
       // then rebuild a clean tree with only those.  Same pattern as
       // simple_sharingtree_backed::reset_tree.
       void reset_tree (std::vector<V>&& elements) noexcept {
-        const size_t temp_root = this->forest->add_vectors (std::move (elements));
-        auto all = this->forest->get_all (temp_root);
-
+        this->vector_set = utils::reduce_to_maxima (std::move (elements));
         std::vector<V> antichain;
-        std::vector<V> result;
-        antichain.reserve (all.size ());
-        result.reserve (all.size ());
-        for (auto& e : all) {
-          if (not this->forest->covers_vector (temp_root, e, true)) {
-            antichain.push_back (e.copy ());
-            result.push_back (std::move (e));
-          }
-        }
+        antichain.reserve (this->vector_set.size ());
+        for (const auto& e : this->vector_set)
+          antichain.push_back (e.copy ());
         this->root = this->forest->add_vectors (std::move (antichain));
-        this->vector_set = std::move (result);
       }
 
       [[nodiscard]] bool is_antichain () const {

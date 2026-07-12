@@ -29,11 +29,34 @@ namespace posets::downsets {
       vector_backed () = default;
       std::vector<V> vector_set;
 
+      [[nodiscard]] bool debug_is_antichain () const {
+#ifndef NDEBUG
+        for (auto lhs = vector_set.begin (); lhs != vector_set.end (); ++lhs)
+          for (auto rhs = std::next (lhs); rhs != vector_set.end (); ++rhs) {
+            auto order = lhs->partial_order (*rhs);
+            if (order.leq () or order.geq ())
+              return false;
+          }
+#endif
+        return true;
+      }
+
     public:
       vector_backed (const vector_backed&) = delete;
       vector_backed (vector_backed&&) = default;
       vector_backed& operator= (vector_backed&&) = default;
       vector_backed& operator= (const vector_backed&) = delete;
+
+      // Trusted bulk construction.  `elements` must contain distinct,
+      // pairwise-incomparable values.  This is useful for order isomorphisms,
+      // which preserve an existing maximal-element antichain exactly.
+      static vector_backed from_antichain_unchecked (std::vector<V>&& elements) {
+        assert (not elements.empty ());
+        vector_backed result;
+        result.vector_set = std::move (elements);
+        assert (result.debug_is_antichain ());
+        return result;
+      }
 
       bool operator== (const vector_backed& other) = delete;
 

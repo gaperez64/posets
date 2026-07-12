@@ -23,6 +23,7 @@ int main (int argc, const char* argv[]) {
   // Add some vectors to create a tree
   std::vector<std::vector<test_value_type>> data {{6, 3, 2}, {5, 5, 4}, {2, 6, 2}};
   auto idcs = f.add_vectors (std::move (vvtovv (data)));
+  assert (f.count_vectors (idcs) == f.get_all (idcs).size ());
   std::cout << f << std::endl;
   f.print_children (idcs, 0);
   std::vector<test_value_type> v = {2, 2, 2};
@@ -47,6 +48,7 @@ int main (int argc, const char* argv[]) {
   // Test adding a second tree to the forest
   data = {{7, 4, 3}, {4, 8, 4}, {2, 5, 6}};
   auto idcs2 = f.add_vectors (std::move (vvtovv (data)));
+  assert (f.count_vectors (idcs2) == f.get_all (idcs2).size ());
   std::cout << f << std::endl;
   f.print_children (idcs2, 0);
 
@@ -118,6 +120,7 @@ int main (int argc, const char* argv[]) {
   // Union tests: Check for vectors that are only in one ST
   // and a vector that is in none
   auto uRoot = f.st_union (idcs, idcs2);
+  assert (f.count_vectors (uRoot) == f.get_all (uRoot).size ());
   std::cout << "Union result:\n";
   f.print_children (uRoot, 0);
 
@@ -130,6 +133,7 @@ int main (int argc, const char* argv[]) {
 
   // Intersection test: Exact opposite of union
   auto iRoot = f.st_intersect (idcs, idcs2);
+  assert (f.count_vectors (iRoot) == f.get_all (iRoot).size ());
   std::cout << "Intersection result:\n";
   f.print_children (iRoot, 0);
   v = {7, 4, 1};
@@ -138,6 +142,15 @@ int main (int argc, const char* argv[]) {
   assert (not f.covers_vector (iRoot, VType (std::move (v))));
   v = {3, 5, 4};
   assert (f.covers_vector (iRoot, VType (std::move (v))));
+
+  utils::sharingforest<VType> clearable {3};
+  data = {{3, 1, 2}, {1, 3, 2}};
+  auto clear_root = clearable.add_vectors (std::move (vvtovv (data)));
+  auto before_clear = clearable.get_all (clear_root);
+  assert (clearable.node_count () > 0);
+  clearable.clear ();
+  auto after_root = clearable.add_vectors (std::move (before_clear));
+  assert (clearable.count_vectors (after_root) == 2);
 
   return 0;
 }

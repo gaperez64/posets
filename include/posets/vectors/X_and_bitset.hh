@@ -1,5 +1,7 @@
 #pragma once
 #include <bitset>
+#include <optional>
+#include <utility>
 
 #include <posets/concepts.hh>
 #include <posets/utils/vector_mm.hh>
@@ -76,8 +78,13 @@ namespace posets::vectors {
       }
 
       class po_res {
+          using inner_order =
+              decltype (std::declval<const X&> ().partial_order (std::declval<const X&> ()));
+
         public:
-          po_res (const x_and_bitset& lhs, const x_and_bitset& rhs) {
+          po_res (const x_and_bitset& lhs, const x_and_bitset& rhs)
+            : lhs_x {lhs.x},
+              rhs_x {rhs.x} {
             // Note that we are putting the bitset first in that comparison.
             bgeq = (lhs.sum >= rhs.sum);
             bleq = (lhs.sum <= rhs.sum);
@@ -88,20 +95,40 @@ namespace posets::vectors {
               bleq = bleq and (diff == rhs.bools);
             }
 
-            if (not bgeq and not bleq)
-              return;
-
-            auto po = lhs.x.partial_order (rhs.x);
-            bgeq = bgeq and po.geq ();
-            bleq = bleq and po.leq ();
+            has_bgeq = not bgeq;
+            has_bleq = not bleq;
           }
 
-          bool geq () { return bgeq; }
+          bool geq () {
+            if (not has_bgeq) {
+              has_bgeq = true;
+              bgeq = order ().geq ();
+            }
+            return bgeq;
+          }
 
-          bool leq () { return bleq; }
+          bool leq () {
+            if (not has_bleq) {
+              has_bleq = true;
+              bleq = order ().leq ();
+            }
+            return bleq;
+          }
 
         private:
-          bool bgeq, bleq;
+          inner_order& order () {
+            if (not inner.has_value ())
+              inner.emplace (lhs_x.partial_order (rhs_x));
+            return *inner;
+          }
+
+          const X& lhs_x;
+          const X& rhs_x;
+          std::optional<inner_order> inner;
+          bool bgeq;
+          bool bleq;
+          bool has_bgeq;
+          bool has_bleq;
       };
 
       [[nodiscard]] auto partial_order (const x_and_bitset& rhs) const {
@@ -128,6 +155,31 @@ namespace posets::vectors {
       [[nodiscard]] x_and_bitset meet (const x_and_bitset& rhs) const {
         assert (rhs.k == k);
         return x_and_bitset (k, x.meet (rhs.x), bools bitand rhs.bools);
+      }
+
+      [[nodiscard]] x_and_bitset join (const x_and_bitset& rhs) const {
+        assert (rhs.k == k);
+        return x_and_bitset (k, x.join (rhs.x), bools bitor rhs.bools);
+      }
+
+      void meet_with (const x_and_bitset& rhs) {
+        assert (rhs.k == k);
+        x.meet_with (rhs.x);
+        bools and_eq rhs.bools;
+        sum = bools.count ();
+      }
+
+      void join_with (const x_and_bitset& rhs) {
+        assert (rhs.k == k);
+        x.join_with (rhs.x);
+        bools or_eq rhs.bools;
+        sum = bools.count ();
+      }
+
+      [[nodiscard]] long cached_sum () const
+        requires requires (const X& inner) { inner.cached_sum (); }
+      {
+        return static_cast<long> (sum) + static_cast<long> (x.cached_sum ());
       }
 
       bool operator< (const x_and_bitset& rhs) const {
@@ -173,5 +225,8 @@ namespace posets::vectors {
       x_and_bitset (X&& x) : X (std::move (x)) {}
       x_and_bitset copy () const { return X::copy (); }
       x_and_bitset meet (const x_and_bitset& other) const { return X::meet (other); }
+      x_and_bitset join (const x_and_bitset& other) const { return X::join (other); }
+      void meet_with (const x_and_bitset& other) { X::meet_with (other); }
+      void join_with (const x_and_bitset& other) { X::join_with (other); }
   };
 }
