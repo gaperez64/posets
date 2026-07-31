@@ -38,7 +38,7 @@ namespace posets::downsets {
       template <Vector V2>
       friend std::ostream& operator<< (std::ostream& os, const vector_or_kdtree_backed<V2>& f);
 
-      size_t vector_dim () const {
+      [[nodiscard]] size_t vector_dim () const {
         const auto& backing = get_backing_vector ();
         return backing.empty () ? 0 : backing[0].size ();
       }
